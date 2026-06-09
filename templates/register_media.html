@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Register Media Bottles</title>
+<style>
+body { font-family: Arial; background:#f4f4f4; margin:0; padding:0; }
+.header { background:#2a7f62; color:#fff; padding:15px; display:flex; justify-content:space-between; align-items:center; }
+.header .logo { height:50px; border-radius:10px; }
+.header a { color:#fff; text-decoration:none; margin-left:15px; font-weight:bold; }
+.header a:hover { text-decoration:underline; }
+.container { max-width:500px; margin:30px auto; background:#fff; padding:20px; border-radius:10px; }
+h1 { text-align:center; color:#2a7f62; margin-bottom:20px; }
+.form-group { display:flex; gap:10px; align-items:center; margin-top:12px; }
+.form-group label { flex:0 0 150px; font-weight:bold; }
+.form-group input, .form-group select { flex:1; padding:10px; border-radius:6px; border:1px solid #ccc; }
+button { margin-top:18px; width:100%; padding:12px; background:#2a7f62; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:16px;}
+button:hover { background:#256b52; }
+.readonly { background:#f9f9f9; pointer-events:none; }
+
+.user-greeting {
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.user-greeting strong {
+  color: #ffeb3b;   /* nice highlight color (yellow) */
+}
+
+</style>
+<script>
+function fillDetails() {
+  const select = document.getElementById('media_code');
+  const selected = select.options[select.selectedIndex];
+  document.getElementById('basal_media').value = selected.getAttribute('data-basal') || '';
+  document.getElementById('hormones').value = selected.getAttribute('data-hormones') || 'None';
+}
+</script>
+</head>
+<body>
+
+<div class="header">
+  <img src="{{ url_for('static', filename='img/logoforweb.jpg') }}" class="logo">
+  <div> <span class="user-greeting">
+    👋 Hello, <strong>{{ session.get('username') }}</strong>
+  </span></div>
+  <div>
+   
+    <a href="{{ url_for('dashboard') }}">🏠 Home</a>
+    <a href="{{ url_for('logout') }}">🚪 Logout</a>
+  </div>
+</div>
+
+<div class="container">
+<h1>Register Media Bottles</h1>
+<form method="POST">
+  <div class="form-group">
+    <label for="media_code">Media Code</label>
+    <select id="media_code" name="media_code" required onchange="fillDetails()">
+      <option value="">-- Select Media Code --</option>
+      {% for media in media_list %}
+      <option value="{{ media['media_code'] }}" 
+              data-basal="{{ media['basal_media'] }}" 
+              data-hormones="{{ media['hormones'] }}">
+        {{ media['media_code'] }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="basal_media">Basal Media</label>
+    <input type="text" id="basal_media" class="readonly" readonly>
+  </div>
+
+  <div class="form-group">
+    <label for="hormones">Hormones</label>
+    <input type="text" id="hormones" class="readonly" readonly>
+  </div>
+
+  <div class="form-group">
+    <label for="date_prepared">Date Prepared</label>
+    <input type="date" id="date_prepared" name="date_prepared" value="{{ today_date }}" required>
+  </div>
+
+  <div class="form-group">
+    <label for="technician">Technician</label>
+    <input type="text" id="technician" name="technician" 
+       value="{{ session.get('username') }}" readonly>
+  </div>
+
+  <div class="form-group">
+    <label for="num_bottles">Number of Bottles</label>
+    <input type="number" id="num_bottles" name="num_bottles" min="1" value="1" required>
+  </div>
+
+  <button type="submit">Save Media Bottles</button>
+</form>
+</div>
+
+</body>
+</html>

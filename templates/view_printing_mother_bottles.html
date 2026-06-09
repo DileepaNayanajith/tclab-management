@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Registered Mother Bottles</title>
+  <style>
+    body { font-family: Arial; background:#f4f4f4; margin:0; padding:0; }
+    .header { background:#2a7f62; color:#fff; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; }
+    .header a { color:#fff; text-decoration:none; font-weight:bold; margin-left:18px; }
+    .header a:hover { text-decoration:underline; }
+    .table-container { max-width:900px; margin:40px auto; background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:10px; border:1px solid #ddd; text-align:center; }
+    th { background:#2a7f62; color:#fff; }
+    td img { max-height:60px; }
+    td a { color:#2a7f62; font-weight:bold; text-decoration:none; }
+    td a:hover { text-decoration:underline; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <div class="left"><img src="{{ url_for('static', filename='img/logoforweb.jpg') }}" height="50"></div>
+  <div class="right">
+    <a href="{{ url_for('dashboard') }}">🏠 Home</a>
+    <a href="{{ url_for('register_mother_bottle') }}">➕ Register Bottle</a>
+    <a href="{{ url_for('logout') }}">🚪 Logout</a>
+  </div>
+</div>
+
+<div class="table-container">
+  <h2 style="text-align:center; color:#2a7f62;">Registered Mother Bottles</h2>
+  <table>
+    <tr>
+      <th>Barcode</th>
+      <th>Plant</th>
+      <th>Media</th>
+      <th>Cycle</th>
+      <th>Technician</th>
+      <th>Status</th>
+    </tr>
+    {% for bottle in mother_bottles %}
+    <tr>
+      <td><img src="{{ url_for('generate_barcode', barcode_value=bottle['barcode']) }}"></td>
+      <td>{{ bottle['plant_name'] }}</td>
+      <td>{{ bottle['media_code'] }}</td>
+      <td>{{ bottle['cycle'] }}</td>
+      <td>{{ bottle['technician'] }}</td>
+      <td>
+        {% if bottle['printed'] %}
+          ✅ Printed
+        {% else %}
+          <a href="{{ url_for('print_printing_mother_bottle', bottle_id=bottle['id']) }}" target="_blank">🖨️ Print</a>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!--- <!DOCTYPE html> 
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Print Media Barcodes</title>
+<style>
+body { font-family: Arial; background:#f4f4f4; margin:0; padding:20px; }
+.header { background:#2a7f62; color:#fff; padding:15px; display:flex; justify-content:space-between; align-items:center; border-radius:8px; margin-bottom:20px;}
+.header h2 { margin:0; }
+.container { display:flex; flex-wrap:wrap; gap:20px; }
+.card { background:#fff; padding:15px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); width:200px; text-align:center; }
+.card img { max-width:100%; height:auto; }
+button { margin-bottom:20px; padding:10px 20px; background:#2a7f62; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:16px; }
+button:hover { background:#256b52; }
+
+@media print {
+    button { display:none; }
+    .header h2 { display:none; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h2>Print Media Barcodes</h2>
+  <button id="printBtn">Print / Done</button>
+</div>
+
+<div class="container">
+  {% for barcode in barcodes %}
+  <div class="card">
+    <img src="{{ url_for('generate_barcode', barcode_value=barcode) }}" alt="{{ barcode }}">
+    <p>{{ barcode }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+document.getElementById("printBtn").addEventListener("click", function() {
+    window.print();
+    setTimeout(function() {
+        window.location.href = "{{ url_for('register_media') }}";
+    }, 500);
+});
+</script>
+
+</body>
+</html> ---->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Print Media Barcodes</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+}
+
+.header {
+    background: #2a7f62;
+    color: #fff;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.header h2 {
+    margin: 0;
+}
+
+button {
+    padding: 10px 20px;
+    background: #2a7f62;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover {
+    background: #256b52;
+}
+
+.preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.preview-card {
+    background: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    width: 180px;
+    text-align: center;
+}
+
+.preview-card img {
+    max-width: 100%;
+    height: auto;
+}
+
+.preview-card p {
+    margin: 5px 0 0;
+    font-size: 12px;
+    font-weight: 900;
+    word-break: break-all;
+}
+
+/* PRINT SETTINGS */
+@page {
+    size: 30mm 10mm;
+    margin: 0;
+}
+
+@media print {
+    body {
+        background: white;
+        padding: 0;
+        margin: 0;
+    }
+
+    .header {
+        display: none;
+    }
+
+    .preview-container {
+        display: block;
+    }
+
+    .preview-card {
+        width: 30mm;
+        height: 10mm;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+        page-break-after: always;
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;   
+              
+        overflow: hidden;
+    }
+
+    .preview-card img {
+        width: 100%;
+        height: auto;
+        max-height: 10mm;
+       
+        
+    }
+
+    .preview-card p {
+        
+        font-size: 6px;
+        font-weight: bold;
+        margin: 0;
+        overflow: hidden;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h2>Print Media Barcodes</h2>
+    <button id="printBtn">Print / Done</button>
+</div>
+
+<div class="preview-container">
+    {% for barcode in barcodes %}
+    <div class="preview-card">
+        <img src="{{ url_for('generate_media_barcode', barcode_value=barcode) }}" alt="{{ barcode }}">
+        <p>{{ barcode }}</p>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+document.getElementById("printBtn").addEventListener("click", function() {
+    window.print();
+    setTimeout(function() {
+        window.location.href = "{{ url_for('register_media') }}";
+    }, 1000);
+});
+</script>
+
+</body>
+</html>

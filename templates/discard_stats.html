@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Discard Statistics</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:0; }
+    .header { background:#2a7f62; color:#fff; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; }
+    .header .logo-title { flex:1; text-align:center; }
+    .header .logo-title img { display:block; margin:0 auto; height:60px; }
+    .header .logo-title h1 { margin:5px 0; color:#fff; font-size:24px; }
+    .header .nav-links { flex:1; text-align:right; }
+    .header .nav-links a { color:#fff; text-decoration:none; margin-left:15px; font-weight:bold; }
+    .header .nav-links a:hover { text-decoration:underline; }
+
+    .container { max-width:1200px; margin:30px auto; background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
+
+    h2 { text-align:center; margin-bottom:30px; color:#2a7f62; }
+
+    table { width:100%; border-collapse: collapse; margin-top:20px; }
+    thead th { background:#2a7f62; color:#fff; padding:10px; }
+    tbody td { padding:10px; border:1px solid #ddd; text-align:center; }
+
+    .charts { display:flex; flex-wrap:wrap; gap:40px; justify-content:center; margin-top:40px; }
+    .chart-box { width:400px; background:#fff; padding:15px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    .chart-box h3 { text-align:center; margin-bottom:10px; color:#2a7f62; }
+  </style>
+</head>
+<body>
+
+    <div class="header" style="position:relative; display:flex; justify-content:space-between; align-items:center; padding:15px 20px;">
+  
+        <!-- Left: Logo -->
+        <div style="flex:1;">
+          <img src="{{ url_for('static', filename='img/logoforweb.jpg') }}" alt="Logo" height="60">
+        </div>
+      
+        <!-- Center: Title -->
+        <h1 style="position:absolute; left:50%; transform:translateX(-50%); margin:0; color:#fff; font-size:24px;">Discard Statistics</h1>
+      
+        <!-- Right: Navigation -->
+        <div class="nav-links" style="flex:1; text-align:right;">
+          <a href="{{ url_for('dashboard') }}">🏠 Home</a>
+          <a href="{{ url_for('logout') }}">🚪 Logout</a>
+        </div>
+      </div>
+      
+
+  <div class="container">
+
+    <h2>Discard Summary Tables</h2>
+
+    <!-- Summary Tables -->
+    <table>
+      <thead>
+        <tr>
+          <th>Plant Name</th>
+          <th>Discarded Bottles</th>
+          <th>Percentage (%)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in by_plant %}
+        <tr>
+          <td>{{ item.label }}</td>
+          <td>{{ item.count }}</td>
+          <td>{{ item.percent }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Cycle</th>
+          <th>Discarded Bottles</th>
+          <th>Percentage (%)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in by_cycle %}
+        <tr>
+          <td>{{ item.label }}</td>
+          <td>{{ item.count }}</td>
+          <td>{{ item.percent }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Technician</th>
+          <th>Discarded Bottles</th>
+          <th>Percentage (%)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in by_technician %}
+        <tr>
+          <td>{{ item.label }}</td>
+          <td>{{ item.count }}</td>
+          <td>{{ item.percent }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Lamina Flow</th>
+          <th>Discarded Bottles</th>
+          <th>Percentage (%)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in by_lamina %}
+        <tr>
+          <td>{{ item.label }}</td>
+          <td>{{ item.count }}</td>
+          <td>{{ item.percent }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Subculture Week</th>
+          <th>Discarded Bottles</th>
+          <th>Percentage (%)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in by_week %}
+        <tr>
+          <td>{{ item.label }}</td>
+          <td>{{ item.count }}</td>
+          <td>{{ item.percent }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Charts -->
+    <div class="charts">
+      <div class="chart-box">
+        <h3>By Plant</h3>
+        <canvas id="chartPlant"></canvas>
+      </div>
+
+      <div class="chart-box">
+        <h3>By Cycle</h3>
+        <canvas id="chartCycle"></canvas>
+      </div>
+
+      <div class="chart-box">
+        <h3>By Technician</h3>
+        <canvas id="chartTechnician"></canvas>
+      </div>
+
+      <div class="chart-box">
+        <h3>By Lamina Flow</h3>
+        <canvas id="chartLamina"></canvas>
+      </div>
+
+      <div class="chart-box">
+        <h3>By Subculture Week</h3>
+        <canvas id="chartWeek"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+  function createChart(ctxId, labels, data) {
+      const ctx = document.getElementById(ctxId).getContext('2d');
+      new Chart(ctx, {
+          type: 'bar',
+          data: {
+              labels: labels,
+              datasets: [{
+                  label: 'Discarded Bottles',
+                  data: data,
+                  backgroundColor: 'rgba(42,127,98,0.7)',
+                  borderColor: 'rgba(42,127,98,1)',
+                  borderWidth: 1
+              }]
+          },
+          options: {
+              responsive:true,
+              plugins: {
+                  tooltip: {
+                      callbacks: {
+                          label: function(context) {
+                              return context.dataset.data[context.dataIndex] + ' bottles';
+                          }
+                      }
+                  }
+              },
+              scales: {
+                  y: {
+                      beginAtZero: true,
+                      title: { display: true, text: 'Number of Bottles' }
+                  },
+                  x: {
+                      title: { display: true, text: '' }
+                  }
+              }
+          }
+      });
+  }
+
+  // Initialize charts
+  createChart('chartPlant', {{ by_plant|map(attribute='label')|list|tojson }}, {{ by_plant|map(attribute='count')|list|tojson }});
+  createChart('chartCycle', {{ by_cycle|map(attribute='label')|list|tojson }}, {{ by_cycle|map(attribute='count')|list|tojson }});
+  createChart('chartTechnician', {{ by_technician|map(attribute='label')|list|tojson }}, {{ by_technician|map(attribute='count')|list|tojson }});
+  createChart('chartLamina', {{ by_lamina|map(attribute='label')|list|tojson }}, {{ by_lamina|map(attribute='count')|list|tojson }});
+  createChart('chartWeek', {{ by_week|map(attribute='label')|list|tojson }}, {{ by_week|map(attribute='count')|list|tojson }});
+  </script>
+
+</body>
+</html>

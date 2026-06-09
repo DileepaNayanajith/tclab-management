@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>POS - Rooted Plants</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { background-color: #f8f9fa; }
+        .navbar-brand img { border-radius: 5px; }
+        #pos_table th, #pos_table td { vertical-align: middle; }
+        .row-total { font-weight: bold; }
+        .lab-title {
+            font-size: 22px;  /* reduce size as needed */
+            color: white;      /* text color */
+            text-align: center;
+            font-weight: bold;
+            margin: 0;
+            }
+            .navbar-center {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        input[readonly] { background-color: #e9ecef; }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-success px-3">
+    <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+        <img src="{{ url_for('static', filename='img/logoforweb.jpg') }}" height="40" alt="Logo">       
+    </a>
+    <div class="navbar-center ">
+        <h1 class="lab-title">Natural Foliage TC Lab - Rooted Plants selling </h1>
+      </div>
+
+    <div class="ms-auto">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-light btn-sm me-2">🏠 Home</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
+    </div>
+</nav>
+
+<div class="container mt-4">
+
+    <!--<div class="container mt-4 text-center">
+        <h3 class="mb-3">Rooted Plants selling </h3>
+    </div>-->   
+        
+
+    <script>
+        const price_dict = {{ price_dict | tojson | safe }};
+    </script>
+
+    <!-- Plant Selection -->
+
+    <!-- Barcode Scan -->
+<div class="row g-3 align-items-end mb-4">
+    <div class="col-md-4">
+        <!--<label class="form-label">Scan Rooted Bottle Barcode</label>-->
+        <input type="text" id="scan_barcode" class="form-control" placeholder="Scan barcode here" autofocus>
+    </div>
+</div>
+
+
+    <div class="row g-3 align-items-end mb-3">
+        <div class="col-md-3">
+            <label class="form-label">Plant</label>
+            <select id="plant_select" class="form-select" onchange="updatePrice()">
+                <option value="">-- Select --</option>
+                {% for plant in rooted_plants %}
+                    <option value="{{ plant['plant_code'] }}"
+                            data-variety="{{ plant['variety'] }}"
+                            data-available="{{ plant['total_available'] }}"
+                            data-price="{{ price_dict.get(plant['plant_code'], 0) }}">
+                        {{ plant['plant_code'] }} | {{ plant['variety'] }} | Avl: {{ plant['total_available'] }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Qty</label>
+            <input type="number" id="qty" class="form-control" min="1" value="1">
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Unit Price</label>
+            <input type="number" id="unit_price" class="form-control" step="0.01" value="0">
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Discount %</label>
+            <input type="number" id="discount" class="form-control" min="0" value="0">
+        </div>
+
+        <div class="col-md-2">
+            <button class="btn btn-primary w-100" onclick="addItem()">➕ Add</button>
+        </div>
+    </div>
+
+    <!-- POS Table -->
+    <table class="table table-bordered" id="pos_table">
+        <thead class="table-success">
+            <tr>
+                <th>Plant Code</th>
+                <th>Variety</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Discount %</th>
+                <th>Total</th>
+                <th>❌</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <!-- Total Amount -->
+    <div class="row mb-3">
+        <div class="col-md-3 ms-auto">
+            <label class="form-label">Grand Total</label>
+            <input type="text" id="grand_total" class="form-control fw-bold text-end" value="0.00" readonly>
+        </div>
+    </div>
+
+    <!-- Payment + Buttons -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label class="form-label">Payment Method</label>
+            <select id="payment_method" class="form-select">
+                <option value="Cash">Cash</option>
+                <option value="Card">Visa/MasterCard</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Online">Online Payment</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="mb-5">
+        <button class="btn btn-warning me-2" onclick="savePOS(true)">💾 Save Only</button>
+        <button class="btn btn-success" onclick="savePOS(false)">🖨️ Print & Save</button>
+    </div>
+
+</div>
+
+<script>
+function updatePrice() {
+    const select = document.getElementById("plant_select");
+    if (!select.value) return;
+    const price = parseFloat(select.options[select.selectedIndex].dataset.price || 0);
+    document.getElementById("unit_price").value = price.toFixed(2);
+}
+
+function addItem() {
+    const select = document.getElementById("plant_select");
+    const plant_code = select.value;
+    if (!plant_code) return alert("Select a plant!");
+
+    const option = select.options[select.selectedIndex];
+    const variety = option.dataset.variety;
+    const available = parseInt(option.dataset.available) || 0;
+    const qty = parseInt(document.getElementById("qty").value) || 0;
+    const unit_price = parseFloat(document.getElementById("unit_price").value) || 0;
+    const discount = parseFloat(document.getElementById("discount").value) || 0;
+
+    if (qty <= 0) return alert("Quantity must be > 0");
+    if (qty > available) return alert(`Invalid quantity! Available: ${available}`);
+
+    const total = qty * unit_price * (1 - discount / 100);
+
+    const row = `
+        <tr>
+            <td>${plant_code}</td>
+            <td>${variety}</td>
+            <td>${qty}</td>
+            <td>${unit_price.toFixed(2)}</td>
+            <td>${discount}</td>
+            <td class="row-total">${total.toFixed(2)}</td>
+            <td><button class="btn btn-sm btn-danger" onclick="removeRow(this)">X</button></td>
+        </tr>
+    `;
+    $("#pos_table tbody").append(row);
+
+    // Reset selection
+    $("#qty").val(1);
+    $("#unit_price").val(price_dict[plant_code] || 0);
+    $("#discount").val(0);
+    $("#plant_select").val("");
+
+    updateGrandTotal();
+}
+
+function removeRow(btn) {
+    $(btn).closest("tr").remove();
+    updateGrandTotal();
+}
+
+function updateGrandTotal() {
+    let grand = 0;
+    $("#pos_table tbody tr").each(function() {
+        const rowTotal = parseFloat($(this).find(".row-total").text()) || 0;
+        grand += rowTotal;
+    });
+    $("#grand_total").val(grand.toFixed(2));
+}
+
+function savePOS(save_only) {
+    const items = [];
+    $("#pos_table tbody tr").each(function() {
+        const tds = $(this).children("td");
+        items.push({
+            plant_code: tds.eq(0).text(),
+            variety: tds.eq(1).text(),
+            qty: parseInt(tds.eq(2).text()),
+            unit_price: parseFloat(tds.eq(3).text()),
+            discount: parseFloat(tds.eq(4).text())
+        });
+    });
+
+    if (items.length === 0) return alert("No items to save!");
+
+    const payment_method = $("#payment_method").val();
+
+    $.ajax({
+        url: "/pos_rooted",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({ items, payment_method, save_only }),
+        success: function(res) {
+            alert(res.message);
+            if (!save_only && res.invoice_id) {
+                const printWindow = window.open(`/print_invoice/${res.invoice_id}`, "_blank");
+                printWindow.onload = () => printWindow.print();
+            }
+            $("#pos_table tbody").empty();
+            updateGrandTotal();
+        },
+        error: function(xhr) {
+            alert(xhr.responseJSON?.message || "Error saving invoice!");
+        }
+    });
+}
+</script>
+
+<script>
+    // Scan listener
+    $("#scan_barcode").on("keypress", function(e) {
+        if (e.which === 13) {  // Enter pressed
+            e.preventDefault();
+            const barcode = $(this).val().trim();
+            if (!barcode) return;
+    
+            $.getJSON(`/scan_rooted_bottle/${barcode}`, function(res) {
+                if (res.status === "error") {
+                    alert(res.message);
+                    $("#scan_barcode").val("");
+                    return;
+                }
+    
+                const { plant_code, plant_name, num_plants } = res;
+                addOrUpdatePlant(plant_code, plant_name, num_plants);
+                $("#scan_barcode").val(""); // clear field
+            }).fail(function() {
+                alert("Error reading barcode!");
+            });
+        }
+    });
+    
+    // Add or update plant row
+    function addOrUpdatePlant(plant_code, variety, qty) {
+        const existingRow = $(`#pos_table tbody tr[data-code='${plant_code}']`);
+        const unit_price = parseFloat(price_dict[plant_code] || 0);
+        const discount = 0;
+        const added_qty = parseInt(qty) || 0;
+    
+        if (existingRow.length) {
+            // Update existing row quantity
+            const oldQty = parseInt(existingRow.find("td:eq(2)").text()) || 0;
+            const newQty = oldQty + added_qty;
+            const total = newQty * unit_price * (1 - discount / 100);
+            existingRow.find("td:eq(2)").text(newQty);
+            existingRow.find(".row-total").text(total.toFixed(2));
+        } else {
+            // Add new row
+            const total = added_qty * unit_price * (1 - discount / 100);
+            const row = `
+                <tr data-code="${plant_code}">
+                    <td>${plant_code}</td>
+                    <td>${variety}</td>
+                    <td>${added_qty}</td>
+                    <td>${unit_price.toFixed(2)}</td>
+                    <td>${discount}</td>
+                    <td class="row-total">${total.toFixed(2)}</td>
+                    <td><button class="btn btn-sm btn-danger" onclick="removeRow(this)">X</button></td>
+                </tr>
+            `;
+            $("#pos_table tbody").append(row);
+        }
+    
+        updateGrandTotal();
+    }
+    </script>
+    
+
+</body>
+</html>

@@ -1,0 +1,132 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Rooted Plants</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 0;
+    }
+
+    .header {
+      background: #2a7f62;
+      color: #fff;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header img {
+      height: 40px;
+      border-radius: 5px;
+    }
+
+    .header nav a {
+      color: #fff;
+      margin-left: 15px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .header nav a:hover {
+      text-decoration: underline;
+    }
+
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 20px auto;
+      background: #fff;
+      box-shadow: 0 2px 6px #2a7f62;
+      max-width: 1000px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: #2a7f62;
+      font-size: 25px;
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    thead th {
+      background: #f4f6f9;
+      border-bottom: 2px solid #ccc;
+      padding: 10px;
+      text-align: center;
+      color: #333;
+    }
+
+    tbody td {
+      border-bottom: 1px solid #eee;
+      padding: 8px;
+      text-align: center;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    tbody tr:hover {
+      background: #f1f7ff;
+    }
+
+    /* Highlight overdue rows (8+ weeks) */
+    .overdue {
+      color: red;
+      font-weight: bold;
+      background: #ffeaea !important;
+    }
+  </style>
+</head>
+<body>
+
+    <header class="header">
+      <img src="/static/img/logoforweb.jpg" alt="Logo">
+      <nav>
+        <a href="{{ url_for('dashboard') }}">Home</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+      </nav>
+    </header>
+  
+    <div class="card">
+      <h3>Available Total Rooted Plants  </h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Plant Code</th>
+            <th>Variety</th>
+            <th>Subculture Week</th>
+            <th>Total Plants</th>
+            <th>Age</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for plant in rooted_plants %}
+          <tr class="{% if plant['week_number'] > 6 %}overdue{% endif %}">
+            <td>{{ plant['plant_code'] }}</td>
+            <td>{{ plant['variety'] }}</td>
+            <td>{{ plant['subculture_week'] }}</td>
+            <td>{{ plant['total_plants'] }}</td>
+            <td>{{ plant['age'] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  
+  </body>
+  </html>
+  

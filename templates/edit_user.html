@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit User - TCLabSystem</title>
+
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+    }
+
+    .header {
+      background: #2a7f62;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+
+    .header a {
+      color: white;
+      text-decoration: none;
+      margin-left: 15px;
+      font-weight: bold;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    }
+
+    h2 {
+      text-align: center;
+      color: #2a7f62;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    .permissions {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+
+    .permissions label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: normal;
+      margin: 6px 0;
+    }
+
+    .permissions input {
+      width: auto;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 20px;
+      background: #2a7f62;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #256b52;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div><b>Edit User</b></div>
+    <div>
+      <span style="margin-right:15px;">
+        👋 Hello, <strong>{{ session.get('username') }}</strong>
+      </span>
+      <a href="{{ url_for('dashboard') }}">🏠 Home</a>
+      <a href="{{ url_for('create_users') }}">⬅ Back</a>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div class="container">
+    <h2>Edit User</h2>
+
+    <form method="POST">
+
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" name="full_name" value="{{ user['full_name'] }}" required>
+      </div>
+
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" name="username" value="{{ user['username'] }}" required>
+      </div>
+
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" name="password" placeholder="Leave blank to keep current password">
+        <small style="color:gray;">
+          Only fill this if you want to change password
+        </small>
+      </div>
+
+
+      <div class="form-group">
+        <label>Role</label>
+        <select name="role" required>
+          <option value="admin" {% if user['role']=='admin' %}selected{% endif %}>Admin</option>
+          <option value="manager" {% if user['role']=='manager' %}selected{% endif %}>Manager</option>
+          <option value="technician" {% if user['role']=='technician' %}selected{% endif %}>Technician</option>
+          <option value="media preparator" {% if user['role']=='media preparator' %}selected{% endif %}>Media Preparator</option>
+        </select>
+      </div>
+
+      <!-- PERMISSIONS -->
+      <div class="permissions">
+        <b>Permissions</b><br><br>
+
+        <label>
+          <input type="checkbox" name="can_register_media"
+          {% if user['can_register_media'] == 1 %}checked{% endif %}>
+          Media Preparation Access
+        </label>
+
+        <label>
+          <input type="checkbox" name="can_subculture"
+          {% if user['can_subculture'] == 1 %}checked{% endif %}>
+          Subculture Access
+        </label>
+
+        <label>
+          <input type="checkbox" name="can_discard"
+          {% if user['can_discard'] == 1 %}checked{% endif %}>
+          Discard Access
+        </label>
+
+        <label>
+          <input type="checkbox" name="can_register_mother_plants"
+          {% if user['can_register_mother_plants'] == 1 %}checked{% endif %}>
+          Mother Bottle Access
+        </label>
+
+        <label>
+          <input type="checkbox" name="can_price_list"
+          {% if user['can_price_list'] == 1 %}checked{% endif %}>
+          Price List Access
+        </label>
+
+        <label>
+          <input type="checkbox" name="can_pos_rooted"
+          {% if user['can_pos_rooted'] == 1 %}checked{% endif %}>
+          POS Access
+        </label>
+
+        <label>
+          <input type="checkbox" name="can_dashboard"
+          {% if user['can_dashboard'] == 1 %}checked{% endif %}>
+          Dashboard Access
+        </label>
+      </div>
+
+      <button type="submit">Update User</button>
+
+    </form>
+  </div>
+
+</body>
+</html>

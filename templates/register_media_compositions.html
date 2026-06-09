@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Register Media Composition</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+    .header {
+      background: #2a7f62;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header img { height: 50px; border-radius: 10px; }
+    .header a { color: white; text-decoration: none; margin-left: 15px; font-weight: bold; }
+    .header a:hover { text-decoration: underline; }
+
+    .container { display: flex; gap: 20px; margin: 30px; }
+    .form-container, .table-container {
+      background: white;
+      padding: 22px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+    .form-container { flex: 1; max-width: 400px; }
+    .table-container { flex: 2; overflow-x: auto; }
+
+    label { display: block; margin-top: 12px; font-weight: 600; }
+    .hormone-row { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+    select, input { padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+    select { flex: 2; }
+    input[type="number"] { width: 70px; flex: 0; }
+    button { margin-top: 18px; padding: 12px; background: #2a7f62; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
+    button:hover { background: #256b52; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #2a7f62; color: white; }
+    tr:nth-child(even) { background: #f9f9f9; }
+
+    .extra-hormone { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+    .extra-hormone select { flex: 2; }
+    .extra-hormone input[type="number"] { width: 70px; flex: 0; }
+    .extra-hormone button { flex: 0; }
+
+    /* Flash message styles */
+    .flash { padding: 12px; border-radius: 6px; margin-bottom: 15px; font-weight: 600; }
+    .flash.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .flash.danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .flash.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+
+    .btn {
+    padding: 4px 8px;
+    font-size: 13px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-edit {
+    background-color: #2a7f62;
+    color: white;
+}
+
+.btn-edit:hover {
+    background-color: #256b52;
+}
+
+.btn-delete {
+    background-color: #c82333;
+    color: white;
+}
+
+.btn-delete:hover {
+    background-color: #a71d2a;
+}
+
+.user-greeting {
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.user-greeting strong {
+  color: #ffeb3b;   /* nice highlight color (yellow) */
+}
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <img src="{{ url_for('static', filename='img/logoforweb.jpg') }}" alt="Logo">
+
+    <div><span class="user-greeting">
+      👋 Hello, <strong>{{ session.get('username') }}</strong>
+    </span></div>
+    <div>
+      
+      <a href="{{ url_for('dashboard') }}">🏠 Home</a>
+      <a href="{{ url_for('logout') }}">🚪 Logout</a>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- Form -->
+    <div class="form-container">
+      <h2>Register Media Composition</h2>
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, msg in messages %}
+            <div class="flash {{ category }}">{{ msg }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('register_media_compositions') }}">
+        <label>Media Code</label>
+        <input type="text" name="media_code" required>
+
+        <label>Basal Media</label>
+        <select name="basal_media" required>
+          <option value="MS">MS</option>
+          <option value="B5">B5</option>
+          <option value="WPM">WPM</option>
+        </select>
+
+        <label>Hormone 1</label>
+        <div class="hormone-row">
+          <select name="hormone1">
+            <option value="">--None--</option>
+            <option value="BAP">BAP</option>
+            <option value="NAA">NAA</option>
+            <option value="2,4-D">2,4-D</option>
+            <option value="KIN">KIN</option>
+            <option value="IBA">IBA</option>
+            <option value="IAA">IAA</option>
+            <option value="TDZ">TDZ</option>
+            <option value="picloram">Picloram</option>
+            <option value="2IP">2IP</option>
+            <option value="GA3">GA3</option>
+            <option value="Adenine sulfate">Adenine sulfate</option>
+            <option value="Coconut water">Coconut water</option>
+            <option value="Ascobic A.">Ascobic A.</option>
+
+          </select>
+          <input type="number" step="0.01" name="hormone1_mg" placeholder="mg">
+        </div>
+
+        <label>Hormone 2</label>
+        <div class="hormone-row">
+          <select name="hormone2">
+            < <option value="">--None--</option>
+            <option value="BAP">BAP</option>
+            <option value="NAA">NAA</option>
+            <option value="2,4-D">2,4-D</option>
+            <option value="KIN">KIN</option>
+            <option value="IBA">IBA</option>
+            <option value="IAA">IAA</option>
+            <option value="TDZ">TDZ</option>
+            <option value="picloram">Picloram</option>
+            <option value="2IP">2IP</option>
+            <option value="GA3">GA3</option>
+            <option value="Adenine sulfate">Adenine sulfate</option>
+            <option value="Coconut water">Coconut water</option>
+            <option value="Ascobic A.">Ascobic A.</option>
+          </select>
+          <input type="number" step="0.01" name="hormone2_mg" placeholder="mg">
+        </div>
+
+        <label>Extra Hormones</label>
+        <div id="extra-hormones"></div>
+        <button type="button" onclick="addHormoneRow()">+ Add Hormone</button>
+
+        <button type="submit">Save Media Composition</button>
+      </form>
+    </div>
+
+    <!-- Table -->
+    <div class="table-container">
+      <h2>Existing Media Records</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Media Code</th>
+            <th>Basal Media</th>
+            <th>Hormones</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for media in media_records %}
+          <tr>
+            <td>{{ media["media_code"] }}</td>
+            <td>{{ media["basal_media"] }}</td>
+            <td>{{ media["hormones"] }}</td>
+            <td>
+              <a href="{{ url_for('edit_media', media_code=media['media_code']) }}">
+                <button type="button" class="btn btn-edit">✏️ Edit</button>
+              </a>
+              
+              <a href="{{ url_for('delete_media', media_code=media['media_code']) }}" onclick="return confirm('Are you sure you want to delete this media?');">
+                <button class="btn btn-delete">🗑️ Delete</button>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    
+  <script>
+    function addHormoneRow() {
+      const container = document.getElementById("extra-hormones");
+      const div = document.createElement("div");
+      div.className = "extra-hormone";
+      div.innerHTML = `
+        <select name="extra_hormone_name[]">
+          <option value="">--None--</option>
+            <option value="BAP">BAP</option>
+            <option value="NAA">NAA</option>
+            <option value="2,4-D">2,4-D</option>
+            <option value="KIN">KIN</option>
+            <option value="IBA">IBA</option>
+            <option value="IAA">IAA</option>
+            <option value="TDZ">TDZ</option>
+            <option value="picloram">Picloram</option>
+            <option value="2IP">2IP</option>
+            <option value="GA3">GA3</option>
+            <option value="Adenine sulfate">Adenine sulfate</option>
+            <option value="Coconut water">Coconut water</option>
+            <option value="Ascobic A.">Ascobic A.</option>
+        </select>
+        <input type="number" step="0.01" name="extra_hormone_mg[]" placeholder="mg">
+        <button type="button" onclick="this.parentElement.remove()">❌</button>
+      `;
+      container.appendChild(div);
+    }
+  </script>
+{% if popup_message %}
+<script>
+    alert("{{ popup_message|safe }}");
+</script>
+{% endif %}
+
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>View Discards</title>
+<style>
+body { font-family: Arial, sans-serif; background: #f4f4f4; margin:0; padding:0; }
+.header { background: #2a7f62; color:#fff; padding:15px 20px; display:flex; justify-content:space-between; align-items:center;}
+.header .logo { height:50px; border-radius:10px; }
+.header a { color:#fff; text-decoration:none; margin-left:15px; font-weight:bold; }
+.header a:hover { text-decoration:underline; }
+
+.container { max-width:1200px; margin:30px auto; background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+
+h2 { color:#2a7f62; text-align:center; margin-bottom:20px; }
+
+table { width:100%; border-collapse: collapse; }
+th, td { border:1px solid #ccc; padding:8px; text-align:left; }
+th { background:#2a7f62; color:#fff; }
+tr:nth-child(even) { background:#f9f9f9; }
+
+input[type="text"] { padding:6px; width:300px; margin-bottom:15px; border-radius:5px; border:1px solid #ccc; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <img src="{{ url_for('static', filename='img/logoforweb.jpg') }}" class="logo">
+  <div>
+    <a href="{{ url_for('dashboard') }}">🏠 Home</a>
+    <a href="{{ url_for('logout') }}">🚪 Logout</a>
+  </div>
+</div>
+
+<div class="container">
+  <h2>Discarded Bottles</h2>
+
+  <!-- Search box -->
+  <input type="text" id="searchBox" placeholder="Search by barcode, plant code, variety or reason...">
+
+  <table id="discardsTable">
+    <thead>
+      <tr>
+        <th>Barcode</th>
+        <th>Plant Code</th>
+        <th>Variety</th>
+        <th>Cycle</th>
+        <th>Technician (Subculture)</th>
+        <th>Lamina Flow</th>
+        <th>Week Number</th>
+        <th>Reason</th>
+        <th>Number of Bottles</th>
+        <th>Technician (Discarded)</th>
+        <th>Date Discarded</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in discards %}
+      <tr>
+        <td>{{ d.barcode or '' }}</td>
+        <td>{{ d.plant_code or '' }}</td>
+        <td>{{ d.plant_name or '' }}</td>
+        <td>{{ d.cycle or '' }}</td>
+        <td>{{ d.subculture_technician or '' }}</td>
+        <td>{{ d.lamina_flow or '' }}</td>
+        <td>{{ d.subculture_week or '' }}</td>
+        <td>{{ d.reason or '' }}</td>
+        <td>{{ d.num_bottles or '' }}</td>
+        <td>{{ d.technician or '' }}</td>
+        <td>{{ d.date_discarded or '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const searchBox = document.getElementById("searchBox");
+    const table = document.getElementById("discardsTable");
+    const tbody = table.tBodies[0];
+
+    searchBox.addEventListener("keyup", function() {
+        const term = this.value.trim().toLowerCase();
+
+        // Loop through all rows in tbody
+        Array.from(tbody.rows).forEach(row => {
+            let match = false;
+            // Loop through each cell in the row
+            Array.from(row.cells).forEach(cell => {
+                if (cell.textContent.trim().toLowerCase().includes(term)) {
+                    match = true;
+                }
+            });
+            row.style.display = match ? "" : "none"; // Show or hide row
+        });
+    });
+});
+</script>
+
+
+</body>
+</html>

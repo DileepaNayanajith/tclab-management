@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Discard Statistics Dashboard</title>
+<style>
+body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:0; }
+.header { background:#2a7f62; color:#fff; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; }
+.header a { color:#fff; text-decoration:none; margin-left:15px; font-weight:bold; }
+.header a:hover { text-decoration:underline; }
+
+.container { max-width:900px; margin:30px auto; background:#fff; padding:20px; border-radius:10px; box-shadow:0px 2px 8px rgba(0,0,0,0.2); }
+
+form { display:flex; gap:15px; flex-wrap:wrap; margin-bottom:20px; }
+form input, form select { padding:6px 10px; border-radius:6px; border:1px solid #ccc; }
+
+table { width:100%; border-collapse:collapse; margin-top:10px; }
+th, td { padding:10px; border:1px solid #ddd; text-align:center; }
+th { background:#2a7f62; color:#fff; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div>Discard Stats Dashboard</div>
+    <div>
+        <a href="{{ url_for('dashboard') }}">🏠 Home</a>
+        <a href="{{ url_for('logout') }}">🚪 Logout</a>
+    </div>
+</div>
+
+<div class="container">
+
+<h2>Filter</h2>
+<form method="POST">
+    <label>Start Date: <input type="date" name="start_date" value="{{ start_date }}"></label>
+    <label>End Date: <input type="date" name="end_date" value="{{ end_date }}"></label>
+    <label>Technician:
+        <select name="technician">
+            <option value="">All</option>
+            {% for t in technicians %}
+            <option value="{{ t }}" {% if technician_filter == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>Lamina Flow:
+        <select name="lamina_flow">
+            <option value="">All</option>
+            {% for l in lamina_flows %}
+            <option value="{{ l }}" {% if lamina_filter == l %}selected{% endif %}>{{ l }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <button type="submit">Apply Filters</button>
+</form>
+
+<h2>Discard Percentages</h2>
+<table>
+    <tr>
+        <th>Plant</th>
+        <th>Discarded</th>
+        <th>Total Subcultured</th>
+        <th>Discard %</th>
+    </tr>
+    {% for r in results %}
+    <tr>
+        <td>{{ r.plant_name }}</td>
+        <td>{{ r.discarded }}</td>
+        <td>{{ r.total_subcultured }}</td>
+        <td>{{ r.discard_percent }}%</td>
+    </tr>
+    {% endfor %}
+</table>
+
+</div>
+</body>
+</html>

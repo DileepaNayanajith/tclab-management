@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Update Plant</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; }
+    .container {
+      max-width: 500px;
+      margin: 50px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h2 { color: #2a7f62; text-align: center; }
+    label { display: block; margin-top: 12px; font-weight: 500; }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px;
+      width: 100%;
+      background: #256b52;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover { background: #1f4d40; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Update Plant</h2>
+    <form action="{{ url_for('update_plant', plant_id=plant['id']) }}" method="POST">
+      <label for="code">Plant Code</label>
+      <input type="text" id="code" name="code" value="{{ plant['code'] }}" required>
+
+      <label for="name">Plant Name</label>
+      <input type="text" id="name" name="name" value="{{ plant['name'] }}" required>
+
+      <label for="variety">Variety</label>
+      <input type="text" id="variety" name="variety" value="{{ plant['variety'] }}">
+
+      <label for="description">Description</label>
+      <textarea id="description" name="description" rows="3">{{ plant['description'] }}</textarea>
+
+      <button type="submit">Update Plant</button>
+    </form>
+  </div>
+</body>
+</html>

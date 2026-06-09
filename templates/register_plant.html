@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Register Plant</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
+
+    .header {
+      background: #2a7f62;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header .nav-left a,
+    .header .nav-right a {
+      color: white;
+      text-decoration: none;
+      margin-right: 15px;
+      font-weight: bold;
+    }
+    .header .nav-right a:last-child { margin-right: 0; }
+    .header .nav-left a:hover,
+    .header .nav-right a:hover { text-decoration: underline; }
+    .header .logo { height: 50px; border-radius: 10px; }
+
+    .container {
+      max-width: 500px;
+      margin: 30px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h2 { color: #2a7f62; text-align: center; }
+
+    label { display: block; margin-top: 12px; font-weight: 500; }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px;
+      width: 100%;
+      background: #2a7f62;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover { background: #246851; }
+
+    .user-greeting {
+  color: #ffffff;
+  font-size: 16px;
+  margin-right: 20px;
+}
+
+.user-greeting strong {
+  color: #ffeb3b;   /* nice highlight color (yellow) */
+}
+  </style>
+</head>
+<body>
+
+  <!-- Header / Nav -->
+  <div class="header">
+    <div class="nav-left">
+      <img src="{{ url_for('static', filename='img/logoforweb.jpg') }}" alt="Logo" class="logo">
+    </div>
+     <div><span class="user-greeting">
+      👋 Hello, <strong>{{ session.get('username') }}</strong>
+    </span></div>
+
+    <div class="nav-right">
+      
+      <a href="{{ url_for('dashboard') }}">🏠 Home</a>
+      <a href="{{ url_for('login') }}">🚪 Logout</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>Register New Plant</h2>
+
+    <form action="{{ url_for('register_plant') }}" method="POST">
+      <label for="code">Plant Code</label>
+      <input type="text" id="code" name="code" required>
+
+      <label for="name">Plant Name</label>
+      <input type="text" id="name" name="name" required>
+
+      <label for="variety">Variety</label>
+      <input type="text" id="variety" name="variety">
+
+      <label for="description">Description</label>
+      <textarea id="description" name="description" rows="3"></textarea>
+
+      <button type="submit">Register Plant</button>
+    </form>
+  </div>
+
+  <!-- Flash message popup only -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <script>
+{% for category, message in messages %}
+    alert("{{ message|replace('"', '')|replace("'", "") }}");
+{% endfor %}
+</script>
+    {% endif %}
+  {% endwith %}
+
+</body>
+</html>

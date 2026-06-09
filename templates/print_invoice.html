@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Invoice #{{ invoice['id'] }}</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+.header { text-align: center; margin-bottom: 20px; }
+.header img { height: 60px; }
+.company-info { margin-top: 10px; text-align: center; }
+h2 { text-align:center; margin-bottom: 5px; }
+table { width:100%; border-collapse: collapse; margin-top:20px; }
+td, th { border:1px solid #ccc; padding:8px; }
+th { background:#f1f1f1; }
+.footer { margin-top:40px; text-align:center; }
+@media print {
+    .footer { margin-top:20px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <img src="{{ url_for('static', filename='img/logoforweb.jpg') }}" alt="Logo">
+    
+    <div class="company-info" style="text-align: right; margin-top: 10px;">
+        <strong>Natural Foliage laboratory</strong><br>
+        No. 257/131, Situwara asapuwa, Kalalpitiya, Pasyala, Sri Lanka<br>
+        📞 +94 77 3979500, 773303369 | ✉️ info@naturalfoliage.com
+    </div>
+</div>
+
+<p><b>Invoice #:</b> {{ invoice['id'] }}<br>
+<b>Date:</b> {{ invoice['created_at'] }}<br>
+<b>Payment Method:</b> {{ invoice['payment_method'] }}<br>
+<b>Customer Name:</b> {{ invoice['customer_name'] or "N/A" }}</p>
+
+<table>
+<tr><th>Plant Code</th><th>Variety</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>
+{% for item in items %}
+<tr>
+<td>{{ item['plant_code'] }}</td>
+<td>{{ item['plant_name'] }}</td>
+<td>{{ item['quantity'] }}</td>
+<td>{{ "%.2f"|format(item['unit_price']) }}</td>
+<td>{{ "%.2f"|format(item['total_price']) }}</td>
+</tr>
+{% endfor %}
+<tr>
+<td colspan="4" style="text-align:right;"><b>Grand Total</b></td>
+<td><b>{{ "%.2f"|format(invoice['total_amount']) }}</b></td>
+</tr>
+</table>
+
+<div class="footer">
+<p>Thank you for your purchase 🌱</p>
+</div>
+
+<script>
+window.onload = function() {
+    // Automatically open print dialog when page loads
+    window.print();
+};
+</script>
+
+</body>
+</html>

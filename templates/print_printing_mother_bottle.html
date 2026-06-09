@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Print Mother Bottle</title>
+  <style>
+    body { font-family: Arial; text-align:center; margin:50px; position: relative; }
+    img { margin:20px 0; }
+    h2 { color:#2a7f62; margin-bottom: 30px; }
+
+    /* Back button in top-right corner */
+    .back-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 8px 16px;
+      background: #2a7f62;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    
+.back-btn::before {
+  content: "  "; 
+  font-size: 20px;
+}
+    .back-btn:hover { background: #256b52; }
+
+    /* Print button centered below barcode */
+    .print-btn {
+      padding: 10px 20px;
+      margin-top: 20px;
+      background: #2a7f62;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .print-btn:hover { background: #256b52; }
+
+    @media print { 
+      .back-btn, .print-btn { display: none; } /* hide buttons when printing */
+    }
+  </style>
+</head>
+<body>  
+  <a href="{{ url_for('register_mother_bottle') }}" class="back-btn">⬅ Back to Register Form</a>
+
+  <img src="{{ url_for('generate_barcode', barcode_value=bottle['barcode']) }}" alt="barcode">  
+
+  <div>
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+  </div>
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Subculture Entry</title>
+<style>
+body { font-family: Arial, sans-serif; background: #f4f4f4; margin:0; padding:0;  }
+.header { background: #2a7f62; color:#fff; padding:15px 20px; display:flex; justify-content:space-between; align-items:center;}
+.header .logo { height:50px; border-radius:10px; }
+.header a { color:#fff; text-decoration:none; margin-left:15px; font-weight:bold; }
+.header a:hover { text-decoration:underline; }
+
+.container { max-width:1200px; margin:40px auto; display:flex; gap:20px; }
+.left-panel, .right-panel { background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+.left-panel { flex:2; }
+.right-panel { flex:1.5; }
+
+h2 { color:#2a7f62; margin-bottom:15px; }
+
+table { width:100%; border-collapse: collapse; }
+th, td { border:1px solid #ccc; padding:8px; text-align:left; }
+th { background:#2a7f62; color:#fff; }
+tr:nth-child(even) { background:#f9f9f9; }
+
+form div { margin-bottom:12px; display:flex; gap:10px; align-items:center; }
+form label { flex:0 0 180px; font-weight:bold; }
+form input, form select { flex:1; padding:8px; border-radius:6px; border:1px solid #ccc; }
+
+.radio-group { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.radio-group label:first-child { flex:0 0 180px; font-weight:bold; }
+.radio-options { display:flex; gap:20px; flex:1; align-items:center; }
+
+button[type="submit"] {
+    display:block;
+    margin-top:20px;
+    width:200px;
+    padding:12px;
+    background:#2a7f62;
+    color:#fff;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:16px;
+}
+button[type="submit"]:hover { background:#256b52; }
+
+.user-greeting {
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.user-greeting strong {
+  color: #ffeb3b;   /* nice highlight color (yellow) */
+}
+
+</style>
+</head>
+<body>
+
+<div class="header">
+  <img src="{{ url_for('static', filename='img/logoforweb.jpg') }}" class="logo">
+  <div><span class="user-greeting">
+    👋 Hello, <strong>{{ session.get('username') }}</strong>
+  </span></div>
+
+  <div class="right">
+    
+  
+    <a href="{{ url_for('dashboard') }}">🏠 Home</a>      
+    <a href="{{ url_for('logout') }}">🚪 Logout</a>
+  </div>
+
+</div>
+
+<div class="container">
+  <!-- Left: Available Media -->
+  <div class="left-panel">
+    <h2>Available Media Bottles</h2>
+    <table>
+      <tr><th>Media Code</th><th>Available</th></tr>
+      {% for media in media_available %}
+      <tr>
+        <td>{{ media['media_code'] }}</td>
+        <td>{{ media['available_bottles'] }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <!-- Right: Subculture Form -->
+  <div class="right-panel">
+    <h2>Subculture Entry</h2>
+    <form method="POST">
+
+      <div>
+        <label>Mother Bottle (Scan)</label>
+        <input type="text" id="mother_barcode" name="mother_barcode"
+               placeholder="Scan mother bottle barcode" required>
+      </div>
+
+      <!-- Autofill info 
+      <div id="barcode_info" style="margin:10px 0; padding:10px; background:#eef; border-radius:6px; display:none;">
+        <strong>Plant Code:</strong> <span id="info_plant_code"></span><br>
+        <strong>Variety:</strong> <span id="info_variety"></span><br>
+        <strong>Cycle:</strong> <span id="info_cycle"></span>
+      </div>-->
+
+      <div>
+        <label>Plant Code</label>
+        <input type="text" id="plant_code" name="plant_code" value="{{ plant_code or '' }}" readonly>
+      </div>
+
+      <div>
+        <label>Variety</label>
+        <input type="text" id="plant_name" name="plant_name" value="{{ plant_name or '' }}" readonly>
+      </div>
+
+      <div>
+        <label>Cycle</label>
+        <input type="number" id="cycle" name="cycle" value="{{ next_cycle or '' }}" readonly>
+      </div>
+
+      <!-- Subculture Date & Week side by side -->
+      <div style="display:flex; gap:20px; align-items:center;">
+        <div style="flex:1;">
+          <label>Subculture Date</label>
+          <input type="date" id="subculture_date" name="subculture_date" value="{{ today_date }}" required>
+        </div>
+        <div style="flex:1;">
+          <label>Subculture Week</label>
+          <input type="number" id="subculture_week" name="subculture_week" value="" readonly>
+        </div>
+      </div>
+
+      <div>
+        <label>Number of Daughter Bottles</label>
+        <input type="number" name="num_daughter" min="1" value="0" required>
+      </div>
+
+      <div>
+        <label>Plants per Bottle</label>
+        <input type="number" name="num_plants" min="1" value="5" required>
+      </div>
+
+      <div>
+        <label>Media</label>
+        <select name="media_code" required>
+          {% for media in media_available %}
+          {% if media['available_bottles'] > 0 %}
+          <option value="{{ media['media_code'] }}">{{ media['media_code'] }} ({{ media['available_bottles'] }} available)</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+   <label for="technician">Technician</label>
+    <input type="text" id="technician" name="technician" 
+       value="{{ session.get('username') }}" readonly>
+    <!--<input type="text" id="technician" name="technician" required>-->
+
+    <label for="lamina_flow" style="margin-right:2px;">Lamina Flow</label>
+
+<select id="lamina_flow" name="lamina_flow" required>
+    <option value="">-- Select Lamina Flow --</option>
+
+    <option value="LF1" {% if saved_lamina == 'LF1' %}selected{% endif %}>A</option>
+    <option value="LF2" {% if saved_lamina == 'LF2' %}selected{% endif %}>B</option>
+    <option value="LF3" {% if saved_lamina == 'LF3' %}selected{% endif %}>C</option>
+    <option value="LF4" {% if saved_lamina == 'LF4' %}selected{% endif %}>D</option>
+    <option value="LF5" {% if saved_lamina == 'LF5' %}selected{% endif %}>E</option>
+    <option value="LF6" {% if saved_lamina == 'LF6' %}selected{% endif %}>F</option>
+</select>
+</div>
+
+
+      <!-- Type Selection: Multiply / Rooting -->
+      <div class="radio-group">
+        <label>Choose Type:</label>
+        <div class="radio-options">
+          <input type="radio" name="type" id="multiply" value="multiply" required>
+          <label for="multiply">Multiply</label>
+          <input type="radio" name="type" id="rooting" value="rooting">
+          <label for="rooting">Rooting</label>
+        </div>
+      </div>
+
+      <button type="submit">Save</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // --- Flash messages from Flask ---
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        alert("{{ message }}");
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  // Barcode scan & autofill
+  const barcodeInput = document.getElementById("mother_barcode");
+
+  barcodeInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+          e.preventDefault();
+          let barcode = this.value.replace(/[\r\n]+/g, "").trim();
+          if (!barcode) return;
+
+          fetch(`/get_mother_info/${barcode}`)
+              .then(resp => resp.json())
+              .then(data => {
+                  if (data.error) {
+                      alert("❌ Mother bottle not found!");
+                      return;
+                  }
+     
+                   // --- Check if discarded ---
+                if (data.table === "mother_bottles" && data.status === "Discarded") {
+                    if (confirm("⚠️ This mother bottle is discarded! ")) {
+                        window.location.href = "/subculture_entry";
+                    }
+                    return; // stop autofill
+                }
+                
+
+                  // Autofill form fields
+                  document.getElementById("plant_code").value = data.plant_code;
+                  document.getElementById("plant_name").value = data.plant_name || "";
+                  document.getElementById("cycle").value = data.cycle;
+
+                  // --- Show popup only if bottle already subcultured ---
+                if (data.already_subcultured) {
+                    alert("⚠️ This bottle was already subcultured.\nPlants will NOT be deducted again.");
+                }
+            })
+            .catch(err => console.error(err));
+      }
+  });
+
+  // Function to calculate ISO week number
+  function getWeekNumber(d) {
+      d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+      return weekNo;
+  }
+
+  const dateInput = document.getElementById("subculture_date");
+  const weekInput = document.getElementById("subculture_week");
+
+  if (dateInput.value) {
+      const selectedDate = new Date(dateInput.value);
+      weekInput.value = getWeekNumber(selectedDate);
+  }
+
+  dateInput.addEventListener("change", function() {
+      const selectedDate = new Date(this.value);
+      if (!isNaN(selectedDate)) {
+          weekInput.value = getWeekNumber(selectedDate);
+      }
+  });
+</script>
+
+<!--<script>
+  document.getElementById("mother_barcode").addEventListener("change", function() {
+      const barcode = this.value.trim();
+      if (!barcode) return;
+  
+      fetch(`/check_mother_status/${barcode}`)
+          .then(res => res.json())
+          .then(data => {
+              if (data.status === "Discarded") {
+                  if (confirm("⚠️ This mother bottle is already discarded! Do you want to go to discard entry form?")) {
+                      window.location.href = "/discard_entry";
+                  }
+              }
+          });
+  });
+  </script>-->
+  
+</body>
+  </html>
+  

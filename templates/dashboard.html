@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Natural Foliage TC Lab Dashboard</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      background: #f4f4f4;
+    }
+
+    /* Top header bar */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #2a7f62;
+      color: white;
+      padding: 10px 20px;
+    }
+
+    .header-bar .logo {
+      height: 50px;
+      border-radius: 10px;
+    }
+
+    .header-bar .lab-title {
+      margin: 0;
+      text-align: center;
+      font-size: 24px;
+    }
+
+    .logout-button {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .view-buttons {
+      display: flex;
+      justify-content: center;
+      background: #56ab91;
+      padding: 10px 0;
+    }
+
+    .view-buttons a {
+      color: white;
+      text-decoration: none;
+      margin: 0 15px;
+      font-weight: bold;
+    }
+
+    .dashboard-body {
+      display: flex;
+      margin-top: 20px;
+    }
+
+    .side-menu {
+      width: 200px;
+      background: #e0f2ef;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .side-menu a {
+      margin-bottom: 10px;
+      color: #2a7f62;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .side-menu a:hover {
+      text-decoration: underline;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 20px;
+    }
+
+/* Sidebar container */
+.side-menu {
+    width: 250px;
+    background: #e0f2ef;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    border-right: 2px solid #2a7f62;
+}
+
+/* Sidebar container */
+.side-menu {
+    width: 250px;
+    background: #e0f2ef;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    border-right: 2px solid #2a7f62;
+}
+
+/* Sidebar links as tabs */
+.side-menu .tab {
+    display: block;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    color: #2a7f62;
+    text-decoration: none;
+    font-weight: 500;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.1);  /* faint border */
+    transition: all 0.3s;
+}
+
+/* Hover effect */
+.side-menu .tab:hover {
+    background-color: #2a7f62;
+    color: #fff;
+    border-color: #2a7f62;  /* optional: change border on hover */
+}
+
+/* Active tab style */
+.side-menu .tab.active {
+    background-color: #256b52;
+    color: #fff;
+    font-weight: bold;
+    border-color: #256b52;
+}
+
+.main-content {
+  max-width: 1200px;
+  margin: -30px auto 0 auto; 
+  padding: 20px;
+}
+
+.main-content h2 {
+  color: #2a7f62;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+/* Dashboard container: horizontal cards */
+/* Dashboard container for two cards */
+.dashboard-cards {
+  display: flex;
+  gap: 20px;
+  flex-wrap: nowrap; /* Prevent wrapping */
+  justify-content: space-between;
+}
+
+/* Each card */
+.card {
+  background: #fff;
+  flex: 1; /* make both cards equal width */
+  min-width: 400px; /* ensures cards don’t get too small */
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Sub-cards inside Available Plant Varieties */
+.flex-row {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.sub-card {
+  flex: 1;
+  background: #f9f9f9;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.sub-card h4 {
+  margin-bottom: 8px;
+}
+
+/* Table styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+table th, table td {
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+table th {
+  background: #f0f0f0;
+  color: #333;
+}
+
+table tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.placeholder {
+  color: #666;
+  font-style: italic;
+}
+
+/* Optional: make table scrollable on smaller screens */
+.card table {
+  display: block;
+  overflow-x: auto;
+}
+
+.user-greeting {
+  color: #ffffff;
+  font-size: 16px;
+  
+}
+
+.user-greeting strong {
+  color: #ffeb3b;   /* nice highlight color (yellow) */
+}
+
+</style>
+
+  
+</head>
+<body>
+
+  <!-- Top header bar -->
+  <header class="header-bar">
+    <div class="left">
+      <img src="/static/img/logoforweb.jpg" alt="Logo" class="logo">
+    </div>
+    <div class="center">
+      <h1 class="lab-title">Natural Foliage TC Lab</h1>
+    </div>
+    <div><span class="user-greeting">
+      👋 Hello, <strong>{{ session.get('username') }}</strong>
+    </span></div>
+    <div class="right">
+      
+      <a href="/logout" class="logout-button">🚪 Logout</a>
+      
+    </div>
+  </header>
+
+  <!-- Top navigation -->
+  <nav class="view-buttons">
+    <a href="/view_plants">Registered plants</a>
+    <a href="/view_media">Media bottles</a>
+
+    {% if session.get('role') == 'admin' or session.get('can_subculture') == 1 %}
+      <a href="/view_subculture">Subculture</a>
+    {% endif %}
+
+    {% if session.get('role') == 'admin' or session.get('can_discard') == 1 %}
+      <a href="/view_discards">Discards</a>
+    {% endif %}
+
+    {% if session.get('role') == 'admin' or session.get('can_dashboard') == 1 %}
+      <a href="/view_rooted_plants">Rooted Plants</a>
+      <a href="/view_invoices">Invoices</a>
+      <a href="{{ url_for('discard_stats') }}">📊 Discard Charts</a>
+    {% endif %}
+
+  </nav>
+
+  <div class="dashboard-body">
+
+    <!-- Sidebar -->
+    <nav class="side-menu">
+
+      <!-- ================= ADMIN ONLY ================= --
+      {% if session.get('role') == 'admin' %}
+    
+        <a href="/create_users" class="tab">Add/Edit users</a>
+    
+        <a href="/register_plant" class="tab">Register plant</a>
+        <a href="/register_mother_bottle" class="tab">Register mother bottles</a>
+        <a href="/register_media_compositions" class="tab">Media compositions</a>
+        <a href="/register_media" class="tab">Media bottles</a>
+    
+        <a href="/subculture_entry" class="tab">Subculture entry</a>
+        <a href="/discard_entry" class="tab">Discard entry</a>
+    
+        <a href="/pos_rooted" class="tab">POS for Plants</a>
+        <a href="/price_list" class="tab">Price List</a>
+    
+      {% endif %}--->
+    
+    
+      <!-- ============== SUBCULTURE TECHNICIAN ============== 
+      {% if session.get('role') == 'technician' %}
+    
+        <a href="/subculture_entry" class="tab">Subculture entry</a>
+    
+      {% endif %}--->
+    
+    <!-- USERS -->
+{% if session.get('role') == 'admin' %}
+<a href="/create_users" class="tab">Add/Edit users</a>
+<a href="/register_media_compositions" class="tab">Register media compositions</a>
+<a href="/register_plant" class="tab">Register plant</a>
+
+{% endif %}
+
+<!-- PLANTS -->
+{% if session.get('can_register_mother_plants') == 1 %}
+<a href="/register_mother_bottle" class="tab">Register mother bottles</a>
+{% endif %}
+
+{% if session.get('can_register_media') == 1 %}
+<a href="/register_media" class="tab">Media bottles</a>
+
+{% endif %}
+
+<!-- SUBCULTURE -->
+{% if session.get('can_subculture') == 1 %}
+<a href="/subculture_entry" class="tab">Subculture entry</a>
+{% endif %}
+
+<!-- DISCARD -->
+{% if session.get('can_discard') == 1 %}
+<a href="/discard_entry" class="tab">Discard entry</a>
+{% endif %}
+
+<!-- POS -->
+{% if session.get('can_pos_rooted') == 1 %}
+<a href="/pos_rooted" class="tab">POS for Plants</a>
+{% endif %}
+
+<!-- PRICE -->
+{% if session.get('can_price_list') == 1 %}
+<a href="/price_list" class="tab">Price List</a>
+{% endif %}
+
+<!-- DASHBOARD --
+{% if session.get('can_dashboard') == 1 %}
+<a href="/dashboard" class="tab">Dashboard</a>
+{% endif %}---->
+
+
+      <!-- ============== MANAGER (optional future use) ============== --
+      {% if session.get('role') == 'manager' %}
+    
+        <a href="/register_plant" class="tab">Register plant</a>
+        <a href="/view_plants" class="tab">View Plants</a>
+    
+      {% endif %}---->
+    
+    </nav>
+
+    <!-- Main content -->
+    <main class="main-content">
+
+      <h2>Dashboard Overview</h2>
+
+      <div class="dashboard-cards">
+
+        <!-- Plant totals -->
+        <section class="card">
+          <h3>Available Subculture Plant Varieties & Quantity</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Plant Code</th>
+                <th>Plant Name</th>
+                <th>Multiply</th>
+                <th>Rooting</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for plant in plant_totals %}
+              <tr>
+                <td>{{ plant.plant_code }}</td>
+                <td>{{ plant.plant_name }}</td>
+                <td>{{ plant.multiply }}</td>
+                <td>{{ plant.rooting }}</td>
+                <td>{{ plant.grand_total }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Old bottles -->
+        <section class="card">
+          <h3>Subculture Bottles Older than 6 Weeks</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Subcul. Week</th>
+                <th>Code</th>
+                <th>Variety</th>
+                <th>Bottles</th>
+                <th>Total Plants</th>
+                <th>Age</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for bottle in old_bottles %}
+              <tr {% if bottle.week_number > 8 %} style="color:red;" {% endif %}>
+                <td>{{ bottle.subculture_week }}</td>
+                <td>{{ bottle.plant_code }}</td>
+                <td>{{ bottle.variety }}</td>
+                <td>{{ bottle.bottle_count }}</td>
+                <td>{{ bottle.total_plants }}</td>
+                <td>{{ bottle.age }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+
+      </div>
+
+    </main>
+
+  </div>
+
+</body>
+</html>

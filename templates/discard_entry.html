@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Discard Entry</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:0; }
+    .header { background:#2a7f62; color:#fff; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; }
+    .header .logo { height:50px; border-radius:10px; }
+    .header a { color:#fff; text-decoration:none; margin-left:15px; font-weight:bold; }
+    .header a:hover { text-decoration:underline; }
+
+    .container { max-width:600px; margin:40px auto; background:#fff; padding:20px; border-radius:10px; box-shadow:0px 2px 8px rgba(0,0,0,0.2); }
+    h2 { text-align:center; margin-bottom:20px; color:#2a7f62; }
+    .form-group { margin-bottom:15px; }
+    label { display:block; font-weight:bold; margin-bottom:5px; }
+    input, select { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; }
+    button { background:#2a7f62; color:#fff; padding:10px 20px; border:none; border-radius:6px; cursor:pointer; font-size:16px; }
+    button:hover { background:#256d55; }
+
+    .user-greeting {
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.user-greeting strong {
+  color: #ffeb3b;   /* nice highlight color (yellow) */
+}
+
+
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <img src="{{ url_for('static', filename='img/logoforweb.jpg') }}" class="logo">
+  <div>
+    <span class="user-greeting">
+      👋 Hello, <strong>{{ session.get('username') }}</strong>
+    </span>
+  
+  </div>
+
+  <div class="right">
+    
+    <a href="{{ url_for('dashboard') }}">🏠 Home</a>      
+    <a href="{{ url_for('logout') }}">🚪 Logout</a>
+  </div>
+
+</div>
+
+
+
+<div class="container">
+  <h2>Discard Entry</h2>
+  <form method="POST" action="{{ url_for('discard_entry') }}">
+
+    <div class="form-group">
+      <label for="barcode">Scan Bottle Barcode</label>
+      <input type="text" id="barcode" name="barcode" placeholder="Scan or enter barcode" required autofocus>
+    </div>
+
+    <div class="form-group">
+      <label>Plant Code</label>
+      <input type="text" id="plant_code" name="plant_code" readonly>
+    </div>
+
+    <div class="form-group">
+      <label>Variety</label>
+      <input type="text" id="plant_name" name="plant_name" readonly>
+    </div>
+
+    <div class="form-group">
+      <label>Cycle</label>
+      <input type="text" id="cycle" name="cycle" readonly>
+    </div>
+
+    <div class="form-group">
+      <label>Technician (Subculture)</label>
+     <!---- <input type="text" id="subculture_technician" name="subculture_technician" readonly>-->
+      <input type="text" id="technician" name="technician" 
+       value="{{ session.get('username') }}" readonly>
+    </div>
+
+    <div class="form-group">
+      <label>Lamina Flow</label>
+      <input type="text" id="lamina_flow" name="lamina_flow" readonly>
+    </div>
+
+    <div class="form-group">
+      <label>Week Number</label>
+      <input type="text" id="subculture_week" name="subculture_week" readonly>
+    </div>
+
+    <div class="form-group">
+      <label for="reason">Reason for Discard</label>
+      <select id="reason" name="reason" required>
+        <option value="">-- Select Reason --</option>
+        <option value="Contamination">Contamination</option>
+        <option value="Plant Death">Plant Death</option>
+        <option value="Damaged Bottle">Damaged Bottle</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="num_bottles">Number of Bottles</label>
+      <input type="number" id="num_bottles" name="num_bottles" min="1" value="1" required>
+    </div>
+
+    <div class="form-group">
+      <label for="technician">Technician</label>
+      <input type="text" id="technician" name="technician" placeholder="Enter technician name" required>
+    </div>
+
+    <div style="text-align:center;">
+      <button type="submit">Save Discard</button>
+    </div>
+  </form>
+</div>
+
+<script>
+document.getElementById("barcode").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        let barcode = this.value.trim();
+        if (!barcode) return;
+
+        fetch(`/get_discard_info/${barcode}`)
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);   // show message immediately
+                    this.value = "";     // clear the input
+                    return;
+                }
+                document.getElementById("plant_code").value = data.plant_code;
+                document.getElementById("plant_name").value = data.plant_name;
+                document.getElementById("cycle").value = data.cycle;
+                document.getElementById("subculture_technician").value = data.subculture_technician;
+                document.getElementById("lamina_flow").value = data.lamina_flow;
+                document.getElementById("subculture_week").value = data.week_number;
+            })
+            .catch(err => console.error(err));
+    }
+});
+</script>
+
+</body>
+</html>
+
