@@ -12,7 +12,7 @@ import barcode as bc
 import uuid
 from datetime import date, datetime
 from werkzeug.security import check_password_hash
-
+import traceback
 
 app.secret_key = "19650316sumanasiri"
 
@@ -139,9 +139,11 @@ def login():
                 return redirect(url_for("login"))
 
         except Exception as e:
-            # 🚨 THIS PREVENTS INTERNAL SERVER ERROR
-            flash(f"Login error: {str(e)}", "danger")
-            return redirect(url_for("login"))
+                print("LOGIN CRASH ERROR:")
+                print(traceback.format_exc())
+
+                flash("Internal error occurred. Check logs.", "danger")
+                return redirect(url_for("login"))
 
     return render_template("login.html")
 
@@ -1954,9 +1956,9 @@ def delete_media(media_code):
     return redirect(url_for('register_media_compositions'))
 
 
-@app.route("/")
-def home():
-    return redirect(url_for("login"))
+#@app.route("/")
+#def home():
+    #sreturn redirect(url_for("login"))
 
 
 
