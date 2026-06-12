@@ -1956,9 +1956,9 @@ def delete_media(media_code):
     return redirect(url_for('register_media_compositions'))
 
 
-#@app.route("/")
-#def home():
-    #sreturn redirect(url_for("login"))
+@app.route("/")
+def home():
+    return redirect(url_for("login"))
 
 
 
