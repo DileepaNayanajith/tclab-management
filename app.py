@@ -1930,7 +1930,9 @@ def delete_media(media_code):
     return redirect(url_for('register_media_compositions'))
 
 
-
+@app.route("/")
+def home():
+    return redirect(url_for("login"))
 
 
 
@@ -1939,4 +1941,4 @@ def delete_media(media_code):
 #if __name__ == "__main__":
     #app.run(debug=True, host="127.0.0.1", port=5000)
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
