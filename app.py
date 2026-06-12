@@ -105,7 +105,8 @@ def login():
             password_ok = False
 
             # plain text check (for your current DB)
-            if user["password"] == password:
+            #if user["password"] == password:
+            if user and user["password"] == password:
                 password_ok = True
 
             # hashed password check (future-safe)
@@ -138,12 +139,20 @@ def login():
                 flash("Invalid username or password", "danger")
                 return redirect(url_for("login"))
 
-        except Exception as e:
-                print("LOGIN CRASH ERROR:")
-                print(traceback.format_exc())
+        #except Exception as e:
+                #print("LOGIN CRASH ERROR:")
+                #print(traceback.format_exc())
 
-                flash("Internal error occurred. Check logs.", "danger")
-                return redirect(url_for("login"))
+                #flash("Internal error occurred. Check logs.", "danger")
+                #return redirect(url_for("login"))
+            
+        except Exception as e:
+                import traceback
+                print("🔥 LOGIN CRASH FULL TRACE:")
+                print(traceback.format_exc())
+                print("USER DATA:", user)
+
+    return f"Login error: {e}", 500
 
     return render_template("login.html")
 
