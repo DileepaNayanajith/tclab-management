@@ -95,28 +95,52 @@ def login():
         user = cur.fetchone()
         conn.close()
 
-        # ✅ LOGIN CHECK
-        if user and check_password_hash(user["password"], password):
-
-            session.clear()  # 🔥 IMPORTANT (prevents old permission bugs)
-
-            session["user_id"] = user["id"]
-            session["username"] = user["username"]
-            session["role"] = user["role"]
-
-            # ✅ SAFE INT CONVERSION
-            session["can_subculture"] = int(user["can_subculture"] or 0)
-            session["can_discard"] = int(user["can_discard"] or 0)
-            session["can_dashboard"] = int(user["can_dashboard"] or 0)
-            session["can_register_media"] = int(user["can_register_media"] or 0)
-            session["can_register_mother_plants"] = int(user["can_register_mother_plants"] or 0)
-            session["can_price_list"] = int(user["can_price_list"] or 0)
-            session["can_pos_rooted"] = int(user["can_pos_rooted"] or 0)
-
-            return redirect(url_for("dashboard"))
-
-        else:
+        # ❌ USER NOT FOUND
+        if user is None:
             flash("Invalid username or password", "danger")
+            return redirect(url_for("login"))
+
+        try:
+            # ✅ PASSWORD CHECK (supports hashed OR plain password)
+            password_ok = False
+
+            # plain text check (for your current DB)
+            if user["password"] == password:
+                password_ok = True
+
+            # hashed password check (future-safe)
+            else:
+                try:
+                    password_ok = check_password_hash(user["password"], password)
+                except:
+                    password_ok = False
+
+            if password_ok:
+
+                session.clear()
+
+                session["user_id"] = user["id"]
+                session["username"] = user["username"]
+                session["role"] = user["role"]
+
+                # SAFE CONVERSIONS
+                session["can_subculture"] = int(user["can_subculture"] or 0)
+                session["can_discard"] = int(user["can_discard"] or 0)
+                session["can_dashboard"] = int(user["can_dashboard"] or 0)
+                session["can_register_media"] = int(user["can_register_media"] or 0)
+                session["can_register_mother_plants"] = int(user["can_register_mother_plants"] or 0)
+                session["can_price_list"] = int(user["can_price_list"] or 0)
+                session["can_pos_rooted"] = int(user["can_pos_rooted"] or 0)
+
+                return redirect(url_for("dashboard"))
+
+            else:
+                flash("Invalid username or password", "danger")
+                return redirect(url_for("login"))
+
+        except Exception as e:
+            # 🚨 THIS PREVENTS INTERNAL SERVER ERROR
+            flash(f"Login error: {str(e)}", "danger")
             return redirect(url_for("login"))
 
     return render_template("login.html")
