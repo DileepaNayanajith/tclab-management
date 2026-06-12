@@ -76,21 +76,21 @@ def login():
         cur = conn.cursor()
 
         cur.execute("""
-            SELECT 
-                id,
-                username,
-                password,
-                role,
-                can_subculture,
-                can_discard,
-                can_dashboard,
-                can_register_media,
-                can_register_mother_plants,
-                can_price_list,
-                can_pos_rooted
-            FROM users
-            WHERE username = ?
-        """, (username,))
+    SELECT 
+        id,
+        username,
+        password,
+        role,
+        COALESCE(can_subculture, 0) AS can_subculture,
+        COALESCE(can_discard, 0) AS can_discard,
+        COALESCE(can_dashboard, 0) AS can_dashboard,
+        COALESCE(can_register_media, 0) AS can_register_media,
+        COALESCE(can_register_mother_plants, 0) AS can_register_mother_plants,
+        COALESCE(can_price_list, 0) AS can_price_list,
+        COALESCE(can_pos_rooted, 0) AS can_pos_rooted
+    FROM users
+    WHERE username = ?
+""", (username,))
 
         user = cur.fetchone()
         conn.close()
