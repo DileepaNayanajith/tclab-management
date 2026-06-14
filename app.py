@@ -115,7 +115,9 @@ def login():
                     password_ok = check_password_hash(user["password"], password)
                 except:
                     password_ok = False
-
+            print("Username:", username)
+            print("User found:", user is not None)
+            print("Password OK:", password_ok)
             if password_ok:
 
                 session.clear()
@@ -151,8 +153,8 @@ def login():
                 print("🔥 LOGIN CRASH FULL TRACE:")
                 print(traceback.format_exc())
                 print("USER DATA:", user)
-
-    return f"Login error: {e}", 500
+                return f"Login error: {e}", 500
+             
 
     return render_template("login.html")
 
@@ -640,7 +642,7 @@ def delete_plant(plant_id):
 # ------------------- Register mother bottles -------------------
 
 
-DB_PATH = r"F:\My Drive\naturalfoliagelab\tclab.db"
+DB_PATH = "tclab.db"
 
 # --- Database connection ---
 def get_db_connection():
