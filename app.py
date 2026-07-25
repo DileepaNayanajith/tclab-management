@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file,jsonify
-app = Flask(__name__)
-import sqlite3
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file, jsonify
 import os
+import pymysql
+from database import get_db_connection
+
+app = Flask(__name__)
 from flask import send_file
 import barcode
 from barcode.writer import ImageWriter
@@ -14,7 +16,7 @@ from datetime import date, datetime
 from werkzeug.security import check_password_hash
 import traceback
 
-app.secret_key = "19650316sumanasiri"
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-this-secret-key")
 
 @app.before_request
 def refresh_session_permissions():
@@ -51,14 +53,6 @@ def refresh_session_permissions():
         session["can_price_list"] = int(user[6])
         session["can_pos_rooted"] = int(user[7])
 
-
-DB_NAME = "tclab.db"
-
-def get_db_connection():
-    db_path = os.path.join(os.path.dirname(__file__), DB_NAME)
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 
@@ -115,9 +109,7 @@ def login():
                     password_ok = check_password_hash(user["password"], password)
                 except:
                     password_ok = False
-            print("Username:", username)
-            print("User found:", user is not None)
-            print("Password OK:", password_ok)
+
             if password_ok:
 
                 session.clear()
@@ -149,12 +141,11 @@ def login():
                 #return redirect(url_for("login"))
             
         except Exception as e:
-                import traceback
-                print("🔥 LOGIN CRASH FULL TRACE:")
-                print(traceback.format_exc())
-                print("USER DATA:", user)
-                return f"Login error: {e}", 500
-             
+            import traceback
+            print("🔥 LOGIN CRASH FULL TRACE:")
+            print(traceback.format_exc())
+            print("USER DATA:", user)
+            return f"Login error: {e}", 500
 
     return render_template("login.html")
 
@@ -291,23 +282,37 @@ def dashboard():
     # Bottles older than 6 weeks
     # -----------------------------
     old_bottles = cur.execute("""
-        SELECT 
-            s.cycle AS subculture_week,
-            s.plant_code,
-            s.plant_name AS variety,
+        SELECT
+            x.subculture_week,
+            x.plant_code,
+            x.variety,
             COUNT(*) AS bottle_count,
-             SUM(s.num_plants) AS total_plants,
-            CAST((julianday('now') - julianday(s.date_created)) / 7 AS INTEGER) || ' weeks' AS age,
-            CAST((julianday('now') - julianday(s.date_created)) / 7 AS INTEGER) AS week_number
-        FROM subculture_bottles s
-        LEFT JOIN subculture_bottles d
-            ON d.parent_id = s.id AND d.status='Active'
-        WHERE ((julianday('now') - julianday(s.date_created)) / 7) > 6
-            AND s.status='Active'
-            AND s.multiply = 1
-            AND d.id IS NULL
-         GROUP BY s.cycle, s.plant_code, s.plant_name, age
-        ORDER BY (julianday('now') - julianday(s.date_created)) DESC
+            SUM(x.num_plants) AS total_plants,
+            CONCAT(x.week_number, ' weeks') AS age,
+            x.week_number
+        FROM (
+            SELECT
+                s.id,
+                s.cycle AS subculture_week,
+                s.plant_code,
+                s.plant_name AS variety,
+                s.num_plants,
+                FLOOR(DATEDIFF(CURDATE(), s.date_created) / 7) AS week_number
+            FROM subculture_bottles s
+            LEFT JOIN subculture_bottles d
+                ON d.parent_id = s.id
+                AND d.status = 'Active'
+            WHERE FLOOR(DATEDIFF(CURDATE(), s.date_created) / 7) > 6
+              AND s.status = 'Active'
+              AND s.multiply = 1
+              AND d.id IS NULL
+        ) AS x
+        GROUP BY
+            x.subculture_week,
+            x.plant_code,
+            x.variety,
+            x.week_number
+        ORDER BY x.week_number DESC
     """).fetchall()
 
     conn.close()
@@ -379,7 +384,7 @@ def create_users():
             conn.commit()
             flash("User created successfully!", "success")
 
-        except sqlite3.IntegrityError:
+        except pymysql.IntegrityError:
             flash(f"Username '{username}' already exists!", "danger")
 
     # ✅ Show users list
@@ -642,13 +647,6 @@ def delete_plant(plant_id):
 # ------------------- Register mother bottles -------------------
 
 
-DB_PATH = "tclab.db"
-
-# --- Database connection ---
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 #-----Register Mother Bottle------------------
 @app.route("/register_mother_bottle", methods=["GET", "POST"])
@@ -790,7 +788,7 @@ def register_media():
     # Fetch media list with hormones
     cur.execute("""
         SELECT m.media_code, m.basal_media, 
-               GROUP_CONCAT(h.hormone_name || ' ' || h.hormone_mg, ', ') AS hormones
+               GROUP_CONCAT(CONCAT(h.hormone_name, ' ', h.hormone_mg) SEPARATOR ', ') AS hormones
         FROM media_compositions m
         LEFT JOIN media_hormones h ON m.media_code = h.media_code
         GROUP BY m.media_code, m.basal_media
@@ -821,7 +819,7 @@ def register_media():
                     VALUES (?, ?, ?, ?, ?)
                 """, (barcode_value, media_code, date_prepared, technician, "Media Prepared"))
                 new_barcodes.append(barcode_value)
-            except sqlite3.IntegrityError:
+            except pymysql.IntegrityError:
                 flash(f"⚠ Barcode already exists, skipping: {barcode_value}", "error")
                 continue
 
@@ -1005,7 +1003,7 @@ def get_media_records():
     cur.execute("""
         SELECT mc.media_code,
                mc.basal_media,
-               GROUP_CONCAT(mh.hormone_name || ' ' || mh.hormone_mg || 'mg', ', ') AS hormones
+               GROUP_CONCAT(CONCAT(mh.hormone_name, ' ', mh.hormone_mg, 'mg') SEPARATOR ', ') AS hormones
         FROM media_compositions mc
         LEFT JOIN media_hormones mh ON mc.media_code = mh.media_code
         GROUP BY mc.media_code, mc.basal_media
@@ -1103,7 +1101,7 @@ def subculture_entry():
 
         # Determine starting index for daughter numbering
         cur.execute("""
-            SELECT MAX(CAST(SUBSTR(barcode, -3) AS INTEGER)) AS last_index
+            SELECT MAX(CAST(SUBSTR(barcode, -3) AS SIGNED)) AS last_index
             FROM subculture_bottles
             WHERE parent_id=? AND cycle=? AND subculture_week=?
         """, (mother_info['id'], new_cycle, subculture_week))
@@ -1169,7 +1167,7 @@ from flask import jsonify
 
 @app.route("/get_mother_info/<barcode>")
 def get_mother_info(barcode):
-    conn = sqlite3.connect("tclab.db")
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
@@ -1180,7 +1178,7 @@ def get_mother_info(barcode):
     cur.execute("""
         SELECT id, barcode, cycle, plant_code, plant_name, media_code, technician, status
         FROM mother_bottles
-        WHERE barcode = ? COLLATE NOCASE
+        WHERE LOWER(barcode) = LOWER(?)
         LIMIT 1
     """, (barcode,))
     mother = cur.fetchone()
@@ -1190,7 +1188,7 @@ def get_mother_info(barcode):
         cur.execute("""
             SELECT id, barcode, cycle, plant_code, plant_name, media_code, technician, status
             FROM subculture_bottles
-            WHERE barcode = ? COLLATE NOCASE
+            WHERE LOWER(barcode) = LOWER(?)
             LIMIT 1
         """, (barcode,))
         mother = cur.fetchone()
@@ -1400,7 +1398,7 @@ def discard_entry():
             conn.commit()
             flash(f"✅ Bottle {barcode} discarded successfully.", "success")
 
-        except sqlite3.Error as e:
+        except pymysql.MySQLError as e:
             flash(f"Error: {e}", "error")
 
         finally:
@@ -1484,22 +1482,30 @@ def view_rooted_plants():
     cur = conn.cursor()
 
     rooted_plants = cur.execute("""
-        SELECT 
-            s.plant_code,
-            s.plant_name AS variety,
-            s.subculture_week,
-            CAST((julianday('now') - julianday(s.date_created)) / 7 AS INTEGER) || ' weeks' AS age,
-            CAST((julianday('now') - julianday(s.date_created)) / 7 AS INTEGER) AS week_number,
-            SUM(s.num_plants) AS total_plants   -- ✅ sum plants per variety & week
-        FROM subculture_bottles s
-        WHERE s.status='Active'
-          AND s.rooting = 1   -- ✅ only rooted stage bottles
-        GROUP BY 
-            s.plant_code, 
-            s.plant_name, 
-            s.subculture_week, 
-            week_number
-        ORDER BY week_number DESC;   -- oldest first
+        SELECT
+            x.plant_code,
+            x.variety,
+            x.subculture_week,
+            CONCAT(x.week_number, ' weeks') AS age,
+            x.week_number,
+            SUM(x.num_plants) AS total_plants
+        FROM (
+            SELECT
+                s.plant_code,
+                s.plant_name AS variety,
+                s.subculture_week,
+                s.num_plants,
+                FLOOR(DATEDIFF(CURDATE(), s.date_created) / 7) AS week_number
+            FROM subculture_bottles s
+            WHERE s.status = 'Active'
+              AND s.rooting = 1
+        ) AS x
+        GROUP BY
+            x.plant_code,
+            x.variety,
+            x.subculture_week,
+            x.week_number
+        ORDER BY x.week_number DESC
     """).fetchall()
 
     conn.close()
@@ -1773,6 +1779,9 @@ def discard_stats_dashboard():
         conditions.append("date_discarded >= ?")
         params.append(start_date)
     if end_date:
+        conditions.append("date_discarded <= ?")
+        params.append(end_date)
+    if technician_filter:
         conditions.append("technician = ?")
         params.append(technician_filter)
     if lamina_filter:
@@ -1789,7 +1798,7 @@ def discard_stats_dashboard():
         FROM discards 
         {where_clause}
         GROUP BY plant_name
-        Y discarded DESC
+        ORDER BY discarded DESC
     """, params)
     discarded_data = cur.fetchall()
 
@@ -1836,6 +1845,7 @@ def discard_stats_dashboard():
     conn.close()
 
     return render_template(
+        "discard_stats_dashboard.html",
         results=results,
         technicians=technicians,
         lamina_flows=lamina_flows,
@@ -1856,6 +1866,7 @@ def discard_stats():
     total_discards = cur.fetchone()[0] or 1  # avoid division by zero
 
     # --- By Plant ---
+    cur.execute("SELECT plant_name, SUM(num_bottles) FROM discards GROUP BY plant_name")
     by_plant_raw = cur.fetchall()
     by_plant = [{"label": p[0], "count": p[1], "percent": round(p[1]/total_discards*100,2)} for p in by_plant_raw]
 
@@ -1875,8 +1886,11 @@ def discard_stats():
     by_lamina = [{"label": l[0], "count": l[1], "percent": round(l[1]/total_discards*100,2)} for l in by_lamina_raw]
 
     # --- By Subculture Week ---
+    cur.execute("SELECT subculture_week, SUM(num_bottles) FROM discards GROUP BY subculture_week")
     by_week_raw = cur.fetchall()
     by_week = [{"label": w[0], "count": w[1], "percent": round(w[1]/total_discards*100,2)} for w in by_week_raw]
+
+    conn.close()
 
     return render_template(
         'discard_stats.html',
