@@ -1,7 +1,25 @@
-venv/
+# Python
 __pycache__/
 *.pyc
+
+# Virtual Environment
+venv/
+
+# Environment variables
+.env
+
+# SQLite Database
 *.db
-.vscode/
-desktop.ini
+*.sqlite3
+
+# macOS
 .DS_Store
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Temporary
+*.tmp
