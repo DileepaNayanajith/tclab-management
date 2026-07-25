@@ -10,7 +10,8 @@ load_dotenv()
 
 def get_mysql_connection():
     """
-    NaturalFoliageLab MySQL database ekata connection ekak return karanawa.
+    NaturalFoliageLab MySQL database ekata
+    aluth connection ekak return karanawa.
     """
 
     return pymysql.connect(
@@ -23,6 +24,13 @@ def get_mysql_connection():
         cursorclass=pymysql.cursors.DictCursor,
         autocommit=False,
     )
+
+
+def get_db():
+    """
+    Application eke use karana main database connection function eka.
+    """
+    return get_mysql_connection()
 
 
 def test_mysql_connection():
