@@ -15,6 +15,7 @@ public class DataSeeder {
             if (users.findByUsername("admin").isEmpty()) {
                 var admin = new User();
                 admin.setUsername("admin"); admin.setFullName("System Administrator");
+                admin.setEmployeeId("ADMIN-001"); admin.setLabSection("Administration");
                 admin.setPassword(encoder.encode("ChangeMe123!")); admin.setRole(Role.ADMIN);
                 users.save(admin);
             }

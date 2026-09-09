@@ -10,6 +10,9 @@ public class User {
     @Column(nullable = false, unique = true) private String username;
     @JsonIgnore @Column(nullable = false) private String password;
     @Column(nullable = false) private String fullName;
+    @Column(nullable = false, unique = true) private String employeeId;
+    private String labSection;
+    @Column(nullable = false) private boolean active = true;
     @Enumerated(EnumType.STRING) @Column(nullable = false) private Role role;
     public Long getId() { return id; }
     public String getUsername() { return username; }
@@ -18,6 +21,12 @@ public class User {
     public void setPassword(String password) { this.password = password; }
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
+    public String getEmployeeId() { return employeeId; }
+    public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
+    public String getLabSection() { return labSection; }
+    public void setLabSection(String labSection) { this.labSection = labSection; }
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
 }

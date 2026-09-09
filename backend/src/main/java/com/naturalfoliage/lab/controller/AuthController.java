@@ -12,6 +12,7 @@ public class AuthController {
     @GetMapping("/health") public Map<String,String> health() { return Map.of("status", "UP"); }
     @GetMapping("/me") public Map<String,Object> me(Authentication auth) {
         var user = users.findByUsername(auth.getName()).orElseThrow();
-        return Map.of("username", user.getUsername(), "fullName", user.getFullName(), "role", user.getRole());
+        return Map.of("username", user.getUsername(), "fullName", user.getFullName(),
+            "employeeId", user.getEmployeeId(), "labSection", user.getLabSection(), "role", user.getRole());
     }
 }

@@ -1,0 +1,14 @@
+select {
+  font: inherit;
+  border: 1px solid #d6e0db;
+  border-radius: 9px;
+  padding: 11px 12px;
+  outline: none;
+  background: #fbfdfc;
+}
+.badge.inactive { background: #f1f2f1; color: #737d78; }
+.cell-sub { display: block; color: #87948e; margin-top: 4px; }
+.staff-layout { grid-template-columns: 360px 1fr; }
+.secondary { background: #eef4f1; color: #315e49; }
+.compact { padding: 7px 10px; font-size: 11px; }
+@media (max-width: 900px) { .staff-layout { grid-template-columns: 1fr; } }
