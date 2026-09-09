@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Leaf, LayoutDashboard, Sprout, FlaskConical, PackageOpen, RefreshCw, Trash2, LogOut } from 'lucide-react';
 import './styles.css';
 
-const api = axios.create({ baseURL: 'http://localhost:8080/api' });
+const api = axios.create({ baseURL: '/api' });
 const nav = [
   ['Dashboard', LayoutDashboard], ['Plants', Sprout], ['Media', FlaskConical],
   ['Mother Bottles', PackageOpen], ['Subcultures', RefreshCw], ['Discards', Trash2]

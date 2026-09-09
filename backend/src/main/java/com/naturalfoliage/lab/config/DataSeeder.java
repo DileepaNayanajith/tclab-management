@@ -1,9 +1,11 @@
 package com.naturalfoliage.lab.config;
 
-import com.naturalfoliage.lab.model.*;
+import com.naturalfoliage.lab.model.Role;
+import com.naturalfoliage.lab.model.User;
 import com.naturalfoliage.lab.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
