@@ -36,6 +36,9 @@ This starts both the Spring Boot backend and React frontend. You can also press
 `Cmd+Shift+B` in VS Code and select **Run Natural Foliage Lab**. Stop both servers
 with `Ctrl+C` in the running terminal.
 
+On the first run, missing frontend packages are installed automatically. This can
+take a minute and requires an internet connection.
+
 The quick start uses the in-memory development database, so MySQL is not required.
 Open http://127.0.0.1:5173 after both servers have started.
 

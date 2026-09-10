@@ -15,8 +15,11 @@ if ! command -v npm >/dev/null 2>&1; then
 fi
 
 if [ ! -d "$PROJECT_DIR/frontend/node_modules" ]; then
-  echo "Frontend packages are missing. Run: cd frontend && npm install"
-  exit 1
+  echo "Frontend packages are missing. Installing them now..."
+  (
+    cd "$PROJECT_DIR/frontend"
+    npm install
+  )
 fi
 
 cleanup() {
