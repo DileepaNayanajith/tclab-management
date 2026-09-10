@@ -16,6 +16,8 @@ public class Subculture {
     @NotBlank private String technician;
     private boolean rooting;
     private LocalDate createdDate = LocalDate.now();
+    private String origin;
+    private String laminaFlow;
     @Enumerated(EnumType.STRING) private BottleStatus status = BottleStatus.ACTIVE;
     public Long getId() { return id; }
     public String getBarcode() { return barcode; }
@@ -35,6 +37,11 @@ public class Subculture {
     public boolean isRooting() { return rooting; }
     public void setRooting(boolean rooting) { this.rooting = rooting; }
     public LocalDate getCreatedDate() { return createdDate; }
+    public void setCreatedDate(LocalDate createdDate) { this.createdDate = createdDate; }
+    public String getOrigin() { return origin; }
+    public void setOrigin(String origin) { this.origin = origin; }
+    public String getLaminaFlow() { return laminaFlow; }
+    public void setLaminaFlow(String laminaFlow) { this.laminaFlow = laminaFlow; }
     public BottleStatus getStatus() { return status; }
     public void setStatus(BottleStatus status) { this.status = status; }
 }
