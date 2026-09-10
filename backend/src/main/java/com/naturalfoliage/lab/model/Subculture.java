@@ -12,6 +12,7 @@ public class Subculture {
     @ManyToOne(optional = false) private MediaComposition media;
     @Min(1) private int plantCount;
     private int cycle;
+    private int subcultureWeek;
     @NotBlank private String technician;
     private boolean rooting;
     private LocalDate createdDate = LocalDate.now();
@@ -27,6 +28,8 @@ public class Subculture {
     public void setPlantCount(int plantCount) { this.plantCount = plantCount; }
     public int getCycle() { return cycle; }
     public void setCycle(int cycle) { this.cycle = cycle; }
+    public int getSubcultureWeek() { return subcultureWeek; }
+    public void setSubcultureWeek(int subcultureWeek) { this.subcultureWeek = subcultureWeek; }
     public String getTechnician() { return technician; }
     public void setTechnician(String technician) { this.technician = technician; }
     public boolean isRooting() { return rooting; }

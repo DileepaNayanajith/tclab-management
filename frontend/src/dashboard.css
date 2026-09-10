@@ -1,0 +1,27 @@
+.dashboard-tables {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+  align-items: start;
+}
+
+.dashboard-table { padding: 0; overflow: hidden; }
+.dashboard-table .table-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 24px 24px 18px; }
+.dashboard-table .table-heading h2 { margin: 4px 0 0; font-size: 20px; line-height: 1.25; }
+.dashboard-table table { min-width: 590px; }
+.dashboard-table th { white-space: nowrap; }
+.count-pill { flex: none; border-radius: 999px; padding: 6px 10px; background: #e9f7f1; color: #167052; font-size: 12px; font-weight: 800; }
+.count-pill.warning { background: #fff0ed; color: #be3e2b; }
+.eyebrow.warning { color: #d14d38; }
+.age-alert { display: inline-block; border-radius: 999px; padding: 5px 9px; background: #fff0ed; color: #c33b29; font-weight: 800; white-space: nowrap; }
+.empty.healthy { color: #25775d; }
+
+@media (max-width: 1180px) {
+  .dashboard-tables { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .dashboard-table .table-heading { padding: 20px 18px 14px; }
+  .dashboard-table .table-heading h2 { font-size: 18px; }
+}
