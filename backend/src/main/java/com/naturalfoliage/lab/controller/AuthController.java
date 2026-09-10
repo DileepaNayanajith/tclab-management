@@ -13,6 +13,7 @@ public class AuthController {
     @GetMapping("/me") public Map<String,Object> me(Authentication auth) {
         var user = users.findByUsername(auth.getName()).orElseThrow();
         return Map.of("username", user.getUsername(), "fullName", user.getFullName(),
-            "employeeId", user.getEmployeeId(), "labSection", user.getLabSection(), "role", user.getRole());
+            "employeeId", user.getEmployeeId(), "labSection", user.getLabSection(),
+            "role", user.getRole(), "permissions", user.getPermissions());
     }
 }

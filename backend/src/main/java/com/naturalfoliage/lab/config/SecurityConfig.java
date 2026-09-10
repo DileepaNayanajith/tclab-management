@@ -8,11 +8,13 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.*;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.*;
 import java.util.List;
+import java.util.ArrayList;
 
 @Configuration
 @EnableMethodSecurity
@@ -21,8 +23,13 @@ public class SecurityConfig {
 
     @Bean UserDetailsService users(UserRepository repository) {
         return username -> repository.findByUsername(username)
-            .map(user -> User.withUsername(user.getUsername()).password(user.getPassword())
-                .roles(user.getRole().name()).disabled(!user.isActive()).build())
+            .map(user -> {
+                var authorities = new ArrayList<SimpleGrantedAuthority>();
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+                user.getPermissions().forEach(permission -> authorities.add(new SimpleGrantedAuthority(permission)));
+                return User.withUsername(user.getUsername()).password(user.getPassword())
+                    .authorities(authorities).disabled(!user.isActive()).build();
+            })
             .orElseThrow(() -> new UsernameNotFoundException("Invalid credentials"));
     }
 

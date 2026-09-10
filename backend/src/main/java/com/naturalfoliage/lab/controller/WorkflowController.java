@@ -4,6 +4,7 @@ import com.naturalfoliage.lab.model.*;
 import com.naturalfoliage.lab.repository.*;
 import com.naturalfoliage.lab.service.LabWorkflowService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.*;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -16,9 +17,9 @@ public class WorkflowController {
         this.workflow = workflow; this.discards = discards; this.plants = plants; this.mothers = mothers; this.subcultures = subcultures;
     }
     public record DiscardRequest(String barcode, String reason, String technician) {}
-    @GetMapping("/discards") List<DiscardRecord> discards() { return discards.findAll(); }
-    @PostMapping("/discards") DiscardRecord discard(@RequestBody DiscardRequest request) { return workflow.discard(request.barcode(), request.reason(), request.technician()); }
-    @GetMapping("/dashboard") Map<String,Long> dashboard() {
+    @GetMapping("/discards") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DISCARDS')") List<DiscardRecord> discards() { return discards.findAll(); }
+    @PostMapping("/discards") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DISCARDS')") DiscardRecord discard(@RequestBody DiscardRequest request) { return workflow.discard(request.barcode(), request.reason(), request.technician()); }
+    @GetMapping("/dashboard") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DASHBOARD')") Map<String,Long> dashboard() {
         return Map.of("plants", plants.count(), "activeMothers", mothers.countByStatus(BottleStatus.ACTIVE), "activeSubcultures", subcultures.countByStatus(BottleStatus.ACTIVE), "discards", discards.count());
     }
 
@@ -27,7 +28,7 @@ public class WorkflowController {
         int bottles, int totalPlants, long ageWeeks) {}
     public record DashboardDetails(List<AvailablePlant> availablePlants, List<OldCulture> oldCultures) {}
 
-    @GetMapping("/dashboard/details")
+    @GetMapping("/dashboard/details") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DASHBOARD')")
     DashboardDetails dashboardDetails() {
         var active = subcultures.findAll().stream()
             .filter(culture -> culture.getStatus() == BottleStatus.ACTIVE)

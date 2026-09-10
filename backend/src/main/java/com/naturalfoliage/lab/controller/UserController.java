@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/users")
@@ -26,17 +27,18 @@ public class UserController {
 
     public record UserRequest(@NotBlank String employeeId, @NotBlank String fullName,
         @NotBlank String username, @Size(min = 8) String password,
-        Role role, String labSection, boolean active) {}
+        Role role, String labSection, boolean active, Set<String> permissions) {}
 
     public record UserResponse(Long id, String employeeId, String fullName, String username,
-        Role role, String labSection, boolean active) {
+        Role role, String labSection, boolean active, Set<String> permissions) {
         static UserResponse from(User user) {
             return new UserResponse(user.getId(), user.getEmployeeId(), user.getFullName(),
-                user.getUsername(), user.getRole(), user.getLabSection(), user.isActive());
+                user.getUsername(), user.getRole(), user.getLabSection(), user.isActive(), user.getPermissions());
         }
     }
 
     public record StatusRequest(boolean active) {}
+    public record PermissionsRequest(Set<String> permissions) {}
 
     @GetMapping
     public List<UserResponse> all() {
@@ -71,6 +73,13 @@ public class UserController {
         return UserResponse.from(users.save(user));
     }
 
+    @PatchMapping("/{id}/permissions")
+    public UserResponse permissions(@PathVariable Long id, @RequestBody PermissionsRequest input) {
+        var user = users.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.setPermissions(input.permissions());
+        return UserResponse.from(users.save(user));
+    }
+
     private void apply(User user, UserRequest input, boolean passwordRequired) {
         if (passwordRequired && (input.password() == null || input.password().isBlank())) {
             throw new IllegalArgumentException("Password is required");
@@ -81,6 +90,7 @@ public class UserController {
         user.setRole(input.role() == null ? Role.TECHNICIAN : input.role());
         user.setLabSection(input.labSection());
         user.setActive(input.active());
+        user.setPermissions(input.permissions());
         if (input.password() != null && !input.password().isBlank()) {
             user.setPassword(passwordEncoder.encode(input.password()));
         }
