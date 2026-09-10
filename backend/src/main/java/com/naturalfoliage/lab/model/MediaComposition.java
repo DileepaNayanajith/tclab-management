@@ -1,7 +1,7 @@
 package com.naturalfoliage.lab.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.*;
 
 @Entity
 public class MediaComposition {
@@ -11,6 +11,7 @@ public class MediaComposition {
     private String hormones;
     private Double ph;
     private Double agar;
+    @Min(0) private int availableBottles;
     public Long getId() { return id; }
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
@@ -22,4 +23,6 @@ public class MediaComposition {
     public void setPh(Double ph) { this.ph = ph; }
     public Double getAgar() { return agar; }
     public void setAgar(Double agar) { this.agar = agar; }
+    public int getAvailableBottles() { return availableBottles; }
+    public void setAvailableBottles(int availableBottles) { this.availableBottles = availableBottles; }
 }

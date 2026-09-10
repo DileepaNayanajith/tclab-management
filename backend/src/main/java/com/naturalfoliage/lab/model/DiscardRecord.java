@@ -10,6 +10,11 @@ public class DiscardRecord {
     @Column(nullable = false) private String reason;
     private int plantCount;
     private String technician;
+    private String plantCode;
+    private String plantName;
+    private int cycle;
+    private int cultureWeek;
+    private String sourceTechnician;
     private LocalDate discardedDate = LocalDate.now();
     public Long getId() { return id; }
     public String getBarcode() { return barcode; }
@@ -21,4 +26,14 @@ public class DiscardRecord {
     public String getTechnician() { return technician; }
     public void setTechnician(String technician) { this.technician = technician; }
     public LocalDate getDiscardedDate() { return discardedDate; }
+    public String getPlantCode() { return plantCode; }
+    public void setPlantCode(String plantCode) { this.plantCode = plantCode; }
+    public String getPlantName() { return plantName; }
+    public void setPlantName(String plantName) { this.plantName = plantName; }
+    public int getCycle() { return cycle; }
+    public void setCycle(int cycle) { this.cycle = cycle; }
+    public int getCultureWeek() { return cultureWeek; }
+    public void setCultureWeek(int cultureWeek) { this.cultureWeek = cultureWeek; }
+    public String getSourceTechnician() { return sourceTechnician; }
+    public void setSourceTechnician(String sourceTechnician) { this.sourceTechnician = sourceTechnician; }
 }
