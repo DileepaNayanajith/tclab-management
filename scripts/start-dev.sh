@@ -41,6 +41,13 @@ else
   BACKEND_PID=$!
 fi
 
-echo "Starting React frontend at http://127.0.0.1:5173"
-cd "$PROJECT_DIR/frontend"
-npm run dev
+if command -v curl >/dev/null 2>&1 && curl -fsS http://127.0.0.1:5173 >/dev/null 2>&1; then
+  echo "React frontend is already running at http://127.0.0.1:5173"
+  if [ -n "$BACKEND_PID" ]; then
+    wait "$BACKEND_PID"
+  fi
+else
+  echo "Starting React frontend at http://127.0.0.1:5173"
+  cd "$PROJECT_DIR/frontend"
+  npm run dev
+fi
