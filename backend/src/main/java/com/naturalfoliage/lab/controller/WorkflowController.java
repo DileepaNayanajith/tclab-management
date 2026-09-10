@@ -5,6 +5,7 @@ import com.naturalfoliage.lab.repository.*;
 import com.naturalfoliage.lab.service.LabWorkflowService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import java.util.*;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -12,13 +13,30 @@ import java.time.temporal.ChronoUnit;
 @RestController @RequestMapping("/api")
 public class WorkflowController {
     private final LabWorkflowService workflow; private final DiscardRepository discards;
-    private final PlantRepository plants; private final MotherBottleRepository mothers; private final SubcultureRepository subcultures;
-    public WorkflowController(LabWorkflowService workflow, DiscardRepository discards, PlantRepository plants, MotherBottleRepository mothers, SubcultureRepository subcultures) {
-        this.workflow = workflow; this.discards = discards; this.plants = plants; this.mothers = mothers; this.subcultures = subcultures;
+    private final PlantRepository plants; private final MediaCompositionRepository media; private final MotherBottleRepository mothers; private final SubcultureRepository subcultures;
+    public WorkflowController(LabWorkflowService workflow, DiscardRepository discards, PlantRepository plants, MediaCompositionRepository media, MotherBottleRepository mothers, SubcultureRepository subcultures) {
+        this.workflow = workflow; this.discards = discards; this.plants = plants; this.media = media; this.mothers = mothers; this.subcultures = subcultures;
     }
-    public record DiscardRequest(String barcode, String reason, String technician) {}
+    public record DiscardRequest(String barcode, String reason) {}
     @GetMapping("/discards") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DISCARDS')") List<DiscardRecord> discards() { return discards.findAll(); }
-    @PostMapping("/discards") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DISCARDS')") DiscardRecord discard(@RequestBody DiscardRequest request) { return workflow.discard(request.barcode(), request.reason(), request.technician()); }
+    @PostMapping("/discards") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DISCARDS')") DiscardRecord discard(@RequestBody DiscardRequest request, Authentication auth) { return workflow.discard(request.barcode(), request.reason(), auth.getName()); }
+    public record Option(Long id, String label) {}
+    public record BarcodeOption(String value, String label) {}
+    public record WorkflowOptions(List<Option> plants, List<Option> media, List<Option> mothers, List<BarcodeOption> bottles) {}
+    @GetMapping("/workflow/options")
+    @PreAuthorize("hasRole('ADMIN') or hasAnyAuthority('ACCESS_MOTHER_BOTTLES','ACCESS_SUBCULTURES','ACCESS_DISCARDS')")
+    WorkflowOptions workflowOptions() {
+        var plantOptions = plants.findAll().stream().map(p -> new Option(p.getId(), p.getCode() + " — " + p.getName())).toList();
+        var mediaOptions = media.findAll().stream().map(m -> new Option(m.getId(), m.getCode() + " — " + m.getBasalMedia())).toList();
+        var motherOptions = mothers.findAll().stream().filter(m -> m.getStatus() == BottleStatus.ACTIVE)
+            .map(m -> new Option(m.getId(), m.getBarcode() + " — " + m.getPlant().getName())).toList();
+        var bottleOptions = new ArrayList<BarcodeOption>();
+        mothers.findAll().stream().filter(m -> m.getStatus() == BottleStatus.ACTIVE)
+            .map(m -> new BarcodeOption(m.getBarcode(), m.getBarcode() + " — Mother bottle")).forEach(bottleOptions::add);
+        subcultures.findAll().stream().filter(s -> s.getStatus() == BottleStatus.ACTIVE)
+            .map(s -> new BarcodeOption(s.getBarcode(), s.getBarcode() + " — Subculture")) .forEach(bottleOptions::add);
+        return new WorkflowOptions(plantOptions, mediaOptions, motherOptions, bottleOptions);
+    }
     @GetMapping("/dashboard") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DASHBOARD')") Map<String,Long> dashboard() {
         return Map.of("plants", plants.count(), "activeMothers", mothers.countByStatus(BottleStatus.ACTIVE), "activeSubcultures", subcultures.countByStatus(BottleStatus.ACTIVE), "discards", discards.count());
     }
