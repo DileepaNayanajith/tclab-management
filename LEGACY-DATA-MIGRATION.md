@@ -11,7 +11,7 @@ Source: `naturalfoliagelab 4.zip` → `tclab.db` (SQLite)
 | media_hormones | 4 | Combined into the media `hormones` field |
 | mother_bottles | 1 | `MotherBottle` |
 | subculture_bottles | 9 | `Subculture` |
-| price_list | 2 | Deferred until the Price List feature is implemented |
+| price_list | 2 | `PriceItem` and the Price List tab |
 | users | 3 | Not imported; passwords and legacy access rules are not copied |
 | discards, taken_out, sales, invoices, transactions | 0 | Nothing to import |
 

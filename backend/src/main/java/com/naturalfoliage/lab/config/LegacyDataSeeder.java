@@ -7,13 +7,14 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Configuration
 @ConditionalOnProperty(name = "app.legacy-data.enabled", havingValue = "true", matchIfMissing = true)
 public class LegacyDataSeeder {
     @Bean CommandLineRunner importLegacyLabData(PlantRepository plants,
         MediaCompositionRepository media, MotherBottleRepository mothers,
-        SubcultureRepository subcultures) {
+        SubcultureRepository subcultures, PriceItemRepository prices) {
         return args -> {
             var phym = plants.findByCode("PHYM").orElseGet(() ->
                 plants.save(plant("PHYM", "Philodendron moonlight yellow", "Philodendron")));
@@ -43,6 +44,8 @@ public class LegacyDataSeeder {
             culture(subcultures, mother, hb, "PHYM-24-002", 5, 4, 24, false, "2026-06-08");
             culture(subcultures, mother, hb, "PHYM-24-003", 5, 5, 24, false, "2026-06-08");
             culture(subcultures, mother, hb, "PHYM-24-004", 1, 6, 24, false, "2026-06-08");
+            price(prices, "PHYCG", "Philodendron Crocodile Gold", 80.0, "2026-06-07T20:28:15");
+            price(prices, "PHYM", "Philodendron moonlight yellow", 60.0, "2026-06-08T19:43:28");
         };
     }
 
@@ -65,5 +68,12 @@ public class LegacyDataSeeder {
         culture.setCreatedDate(LocalDate.parse(date)); culture.setStatus(BottleStatus.ACTIVE);
         culture.setOrigin("Subculture"); culture.setLaminaFlow("LF1");
         repository.save(culture);
+    }
+
+    private void price(PriceItemRepository repository, String plantCode,
+        String variety, double amount, String updated) {
+        if (repository.findByPlantCode(plantCode).isPresent()) return;
+        var item = new PriceItem(); item.setPlantCode(plantCode); item.setVarietyName(variety);
+        item.setPrice(amount); item.setLastUpdated(LocalDateTime.parse(updated)); repository.save(item);
     }
 }
