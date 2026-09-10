@@ -24,6 +24,21 @@ React + Spring Boot + MySQL rewrite of a tissue-culture laboratory workflow.
 
 ## Run locally
 
+### Quick start (recommended for VS Code)
+
+Open the `natural-foliage-lab-fullstack` folder in VS Code, open its terminal, and run:
+
+```bash
+npm run dev
+```
+
+This starts both the Spring Boot backend and React frontend. You can also press
+`Cmd+Shift+B` in VS Code and select **Run Natural Foliage Lab**. Stop both servers
+with `Ctrl+C` in the running terminal.
+
+The quick start uses the in-memory development database, so MySQL is not required.
+Open http://127.0.0.1:5173 after both servers have started.
+
 ### Configure MySQL
 
 - Create a database named `natural_foliage_lab`.

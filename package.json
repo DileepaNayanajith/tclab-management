@@ -1,0 +1,10 @@
+{
+  "name": "natural-foliage-lab-fullstack",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "sh scripts/start-dev.sh",
+    "test": "cd backend && mvn test",
+    "build": "cd frontend && npm run build"
+  }
+}

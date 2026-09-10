@@ -1,6 +1,7 @@
 .DS_Store
 .idea/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 backend/target/
 backend/src/main/resources/application-local.properties
 frontend/node_modules/
