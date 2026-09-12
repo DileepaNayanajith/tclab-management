@@ -645,6 +645,7 @@ function MediaCompositionPage() {
 }
 
 function MediaBottlesPage({ user }) {
+  const legacyHistoryKey = `media-preparations:${user.username}`;
   const [compositions, setCompositions] = useState([]),
     [rows, setRows] = useState([]),
     [mediaId, setMediaId] = useState(""),
@@ -652,6 +653,7 @@ function MediaBottlesPage({ user }) {
     [error, setError] = useState("");
   async function load() {
     setError("");
+    let loadedCompositions = [];
 
     // Load the two sections independently. This keeps the composition selector
     // usable when a previously started backend does not yet expose preparation
@@ -666,7 +668,8 @@ function MediaBottlesPage({ user }) {
         }
         media = await api.get("/media");
       }
-      setCompositions(media.data);
+      loadedCompositions = media.data;
+      setCompositions(loadedCompositions);
     } catch (requestError) {
       setCompositions([]);
       setError(
@@ -685,8 +688,32 @@ function MediaBottlesPage({ user }) {
           requestError.response?.data?.message ||
           "Could not load media preparation history.",
         );
+        setRows([]);
+        return;
       }
-      setRows([]);
+
+      let savedRows = [];
+      try {
+        savedRows = JSON.parse(localStorage.getItem(legacyHistoryKey) || "[]");
+      } catch {
+        localStorage.removeItem(legacyHistoryKey);
+      }
+      const recordedMediaIds = new Set(
+        savedRows.map((item) => String(item.media.id)),
+      );
+      const existingStockRows = loadedCompositions
+        .filter(
+          (item) =>
+            item.availableBottles > 0 && !recordedMediaIds.has(String(item.id)),
+        )
+        .map((item) => ({
+          id: `existing-stock-${item.id}`,
+          preparedAt: null,
+          media: item,
+          bottleCount: item.availableBottles,
+          technician: "Previous stock",
+        }));
+      setRows([...savedRows, ...existingStockRows]);
     }
   }
   useEffect(() => {
@@ -713,9 +740,29 @@ function MediaBottlesPage({ user }) {
           (item) => String(item.id) === String(mediaId),
         );
         if (!composition) throw requestError;
-        await api.patch(`/media/${mediaId}/stock`, {
+        const updatedComposition = {
+          ...composition,
           availableBottles: composition.availableBottles + amount,
+        };
+        await api.patch(`/media/${mediaId}/stock`, {
+          availableBottles: updatedComposition.availableBottles,
         });
+        const savedRows = JSON.parse(
+          localStorage.getItem(legacyHistoryKey) || "[]",
+        );
+        localStorage.setItem(
+          legacyHistoryKey,
+          JSON.stringify([
+            {
+              id: `legacy-${Date.now()}`,
+              preparedAt: new Date().toISOString(),
+              media: updatedComposition,
+              bottleCount: amount,
+              technician: user.username,
+            },
+            ...savedRows,
+          ]),
+        );
       }
       setBottleCount("");
       await load();
@@ -788,7 +835,11 @@ function MediaBottlesPage({ user }) {
             <tbody>
               {rows.map((item) => (
                 <tr key={item.id}>
-                  <td>{new Date(item.preparedAt).toLocaleString()}</td>
+                  <td>
+                    {item.preparedAt
+                      ? new Date(item.preparedAt).toLocaleString()
+                      : "Before history tracking"}
+                  </td>
                   <td>
                     <b>{item.media.code}</b>
                     <small className="cell-sub">{item.media.basalMedia}</small>
