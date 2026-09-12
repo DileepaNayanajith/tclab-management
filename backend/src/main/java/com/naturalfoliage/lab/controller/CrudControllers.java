@@ -105,11 +105,11 @@ class MotherBottleController {
 @RestController @RequestMapping("/api/subcultures")
 @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_SUBCULTURES')")
 class SubcultureController {
-    private final SubcultureRepository repository; private final MotherBottleRepository mothers; private final MediaCompositionRepository media;
-    SubcultureController(SubcultureRepository repository, MotherBottleRepository mothers, MediaCompositionRepository media) { this.repository = repository; this.mothers = mothers; this.media = media; }
+    private final SubcultureRepository repository; private final MotherBottleRepository mothers; private final MediaCompositionRepository media; private final UserRepository users;
+    SubcultureController(SubcultureRepository repository, MotherBottleRepository mothers, MediaCompositionRepository media, UserRepository users) { this.repository = repository; this.mothers = mothers; this.media = media; this.users = users; }
     record LineRequest(@Min(1) int bottleCount, @Min(1) int plantsPerBottle, @Pattern(regexp = "MULTIPLY|ROOTING") String cultureType) {}
     record SubcultureRequest(@NotBlank String parentBarcode, @NotNull Long mediaId,
-        @NotEmpty List<@Valid LineRequest> lines, String laminaFlow) {}
+        @NotEmpty List<@Valid LineRequest> lines, @NotBlank String laminaFlow, String technicianUsername) {}
     @GetMapping List<Subculture> all(Authentication auth) {
         var all = repository.findAll();
         if (auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) return all;
@@ -118,6 +118,12 @@ class SubcultureController {
     }
     @PostMapping @ResponseStatus(HttpStatus.CREATED) @Transactional
     List<Subculture> create(@Valid @RequestBody SubcultureRequest input, Authentication auth) {
+        boolean admin = auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        String technician = auth.getName();
+        if (admin && input.technicianUsername() != null && !input.technicianUsername().isBlank()) {
+            technician = users.findByUsername(input.technicianUsername()).filter(User::isActive)
+                .orElseThrow(() -> new IllegalArgumentException("Selected technician was not found or is inactive")).getUsername();
+        }
         var scannedSubculture = repository.findByBarcode(input.parentBarcode());
         var parent = scannedSubculture.map(Subculture::getParent).orElseGet(() -> mothers.findByBarcode(input.parentBarcode())
             .orElseThrow(() -> new IllegalArgumentException("Scanned parent barcode was not found")));
@@ -136,7 +142,7 @@ class SubcultureController {
         for (var line : input.lines()) for (int bottle = 0; bottle < line.bottleCount(); bottle++) {
             var culture = new Subculture(); culture.setBarcode(nextBarcode(parent.getPlant().getCode(), cycle, week)); culture.setParent(parent);
             culture.setMedia(selectedMedia); culture.setPlantCount(line.plantsPerBottle()); culture.setCycle(cycle); culture.setSubcultureWeek(week);
-            culture.setRooting("ROOTING".equals(line.cultureType())); culture.setLaminaFlow(input.laminaFlow()); culture.setOrigin("Subculture"); culture.setTechnician(auth.getName());
+            culture.setRooting("ROOTING".equals(line.cultureType())); culture.setLaminaFlow(input.laminaFlow().trim()); culture.setOrigin("Subculture"); culture.setTechnician(technician);
             created.add(repository.save(culture));
         }
         return created;
