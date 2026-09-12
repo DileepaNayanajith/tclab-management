@@ -254,9 +254,30 @@ function OperationalTables() {
 }
 
 function Dashboard({ user }) {
-  const [d, setD] = useState({});
+  const [d, setD] = useState({}),
+    [mediaStock, setMediaStock] = useState([]);
   useEffect(() => {
     api.get("/dashboard").then((r) => setD(r.data));
+    async function loadMediaStock() {
+      try {
+        let response;
+        try {
+          response = await api.get("/media/options");
+        } catch (requestError) {
+          if (
+            requestError.response?.status !== 404 &&
+            requestError.response?.status !== 405
+          ) {
+            throw requestError;
+          }
+          response = await api.get("/media");
+        }
+        setMediaStock(response.data);
+      } catch {
+        setMediaStock([]);
+      }
+    }
+    loadMediaStock();
   }, []);
   const tech = user.role === "TECHNICIAN";
   const cards = [
@@ -282,6 +303,16 @@ function Dashboard({ user }) {
           <article className={`stat ${c}`} key={l}>
             <span>{l}</span>
             <strong>{v ?? "—"}</strong>
+            {c === "media" && mediaStock.length > 0 && (
+              <div className="media-stock-list">
+                {mediaStock.map((item) => (
+                  <div key={item.id}>
+                    <b>{item.code}</b>
+                    <span>{item.availableBottles} bottles</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </article>
         ))}
       </section>

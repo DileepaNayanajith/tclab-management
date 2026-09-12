@@ -16,6 +16,10 @@
 .eyebrow.warning { color: #d14d38; }
 .age-alert { display: inline-block; border-radius: 999px; padding: 5px 9px; background: #fff0ed; color: #c33b29; font-weight: 800; white-space: nowrap; }
 .empty.healthy { color: #25775d; }
+.media-stock-list { display: grid; gap: 7px; padding-top: 12px; border-top: 1px solid #e6eee9; }
+.media-stock-list div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.media-stock-list b { color: #214f3b; font-size: 13px; }
+.media-stock-list div span { color: #65766e; font-size: 12px; font-weight: 700; }
 
 @media (max-width: 1180px) {
   .dashboard-tables { grid-template-columns: 1fr; }
