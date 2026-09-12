@@ -15,6 +15,7 @@ public class DiscardRecord {
     private int cycle;
     private int cultureWeek;
     private String sourceTechnician;
+    private String sourceLaminaFlow;
     private LocalDate discardedDate = LocalDate.now();
     public Long getId() { return id; }
     public String getBarcode() { return barcode; }
@@ -36,4 +37,6 @@ public class DiscardRecord {
     public void setCultureWeek(int cultureWeek) { this.cultureWeek = cultureWeek; }
     public String getSourceTechnician() { return sourceTechnician; }
     public void setSourceTechnician(String sourceTechnician) { this.sourceTechnician = sourceTechnician; }
+    public String getSourceLaminaFlow() { return sourceLaminaFlow; }
+    public void setSourceLaminaFlow(String sourceLaminaFlow) { this.sourceLaminaFlow = sourceLaminaFlow; }
 }
