@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '127.0.0.1',
+    allowedHosts: ['.loca.lt'],
     proxy: {
       '/api': 'http://127.0.0.1:8080'
     }
