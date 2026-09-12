@@ -27,6 +27,7 @@ const nav = [
   ["Plant Initiation", PackageOpen],
   ["Subcultures", RefreshCw],
   ["Discards", Trash2],
+  ["Plant Exit", BadgeDollarSign],
   ["Price List", BadgeDollarSign],
   ["Staff", Users],
 ];
@@ -37,6 +38,7 @@ const accessOptions = [
   ["Plant Initiation", "ACCESS_MOTHER_BOTTLES"],
   ["Subcultures", "ACCESS_SUBCULTURES"],
   ["Discards", "ACCESS_DISCARDS"],
+  ["Plant Exit", "ACCESS_PLANT_EXIT"],
   ["Price List", "ACCESS_PRICE_LIST"],
 ];
 const hormoneOptions = [
@@ -1308,6 +1310,16 @@ function DiscardPage({ user }) {
   );
 }
 
+function PlantExitPage({ user }) {
+  const [rows,setRows]=useState([]),[options,setOptions]=useState({bottles:[]}),[barcode,setBarcode]=useState(''),[scan,setScan]=useState(null),[quantity,setQuantity]=useState(''),[destination,setDestination]=useState('HARDENING'),[reference,setReference]=useState(''),[error,setError]=useState('');
+  async function load(){const [exits,lookups]=await Promise.all([api.get('/plant-exits'),api.get('/workflow/options')]);setRows(exits.data);setOptions(lookups.data)}
+  useEffect(()=>{load()},[]);
+  async function detect(){setError('');try{const {data}=await api.get(`/workflow/scan/${encodeURIComponent(barcode)}`);setScan(data);setQuantity(data.plantCount)}catch(e){setScan(null);setError(e.response?.data?.message||'Barcode not found.')}}
+  async function save(e){e.preventDefault();setError('');try{await api.post('/plant-exits',{barcode,quantity:Number(quantity),destination,reference});setBarcode('');setScan(null);setQuantity('');setReference('');await load()}catch(e){setError(e.response?.data?.message||'Could not record plant exit.')}}
+  const admin=user.role==='ADMIN';
+  return <><header><p className="eyebrow">OUTSIDE THE LAB</p><h1>Plant exit</h1><p className="muted">Record healthy plants released for selling or hardening. Quantities are deducted from available inventory.</p></header><section className="split workflow-layout"><form className="panel form" onSubmit={save}><h2>Release plants</h2><label>Scan/read subculture barcode<input list="exit-barcodes" value={barcode} onChange={e=>setBarcode(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();detect()}}} required/></label><datalist id="exit-barcodes">{options.bottles.filter(item=>item.label.includes('Subculture')).map(item=><option value={item.value} key={item.value}>{item.label}</option>)}</datalist><button type="button" className="secondary" onClick={detect}>Detect barcode</button>{error&&<div className="error">{error}</div>}{scan&&<><div className="stock-status"><b>{scan.plantCode} — {scan.plantName}</b><br/>Available in bottle: {scan.plantCount} · {scan.rooting?'Rooting':'Multiply'}</div><label>Quantity leaving<input type="number" min="1" max={scan.plantCount} value={quantity} onChange={e=>setQuantity(e.target.value)} required/></label><label>Destination<select value={destination} onChange={e=>setDestination(e.target.value)}><option value="HARDENING">Hardening</option><option value="SELLING">Selling</option></select></label><label>{destination==='SELLING'?'Customer / order reference':'Hardening location / reference'}<input value={reference} onChange={e=>setReference(e.target.value)} placeholder="Optional reference"/></label><button>Confirm plant exit</button></>}</form><section className="panel table-wrap"><table><thead><tr><th>Date / time</th><th>Plant</th><th>Barcode</th><th>Quantity</th><th>Destination</th><th>Reference</th>{admin&&<th>Released by</th>}</tr></thead><tbody>{rows.map(item=><tr key={item.id}><td>{new Date(item.exitedAt).toLocaleString()}</td><td>{item.plantCode} — {item.plantName}</td><td><b>{item.barcode}</b></td><td>{item.quantity}</td><td><span className="badge">{item.destination}</span></td><td>{item.reference||'—'}</td>{admin&&<td>{item.technician}</td>}</tr>)}{!rows.length&&<tr><td colSpan={admin?7:6} className="empty">No plant exits yet.</td></tr>}</tbody></table></section></section></>
+}
+
 function WorkflowPage({ type }) {
   const paths = {
     "Plant Initiation": "/mother-bottles",
@@ -1853,6 +1865,8 @@ function App() {
       <SubculturePage user={user} sessionLaminaFlow={sessionLaminaFlow} />
     ) : activePage === "Discards" ? (
       <DiscardPage user={user} />
+    ) : activePage === "Plant Exit" ? (
+      <PlantExitPage user={user} />
     ) : configs[activePage] ? (
       <CrudPage type={activePage} user={user} />
     ) : (

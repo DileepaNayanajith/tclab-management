@@ -33,9 +33,10 @@ public class WorkflowController {
     public record BarcodeOption(String value, String label) {}
     public record WorkflowOptions(List<Option> plants, List<MediaOption> media, List<Option> mothers, List<BarcodeOption> bottles) {}
     public record ScanDetails(String barcode, String plantCode, String plantName, int cycle,
-        int nextCycle, int parentWeek, int currentYear, int currentWeek, String technician, String status) {}
+        int nextCycle, int parentWeek, int currentYear, int currentWeek, String technician,
+        String status, int plantCount, boolean rooting) {}
     @GetMapping("/workflow/options")
-    @PreAuthorize("hasRole('ADMIN') or hasAnyAuthority('ACCESS_MOTHER_BOTTLES','ACCESS_SUBCULTURES','ACCESS_DISCARDS')")
+    @PreAuthorize("hasRole('ADMIN') or hasAnyAuthority('ACCESS_MOTHER_BOTTLES','ACCESS_SUBCULTURES','ACCESS_DISCARDS','ACCESS_PLANT_EXIT')")
     WorkflowOptions workflowOptions() {
         var plantOptions = plants.findAll().stream().map(p -> new Option(p.getId(), p.getCode() + " — " + p.getName())).toList();
         var mediaOptions = media.findAll().stream().map(m -> new MediaOption(m.getId(), m.getCode() + " — " + m.getBasalMedia(), m.getAvailableBottles())).toList();
@@ -50,7 +51,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/workflow/scan/{barcode}")
-    @PreAuthorize("hasRole('ADMIN') or hasAnyAuthority('ACCESS_SUBCULTURES','ACCESS_DISCARDS')")
+    @PreAuthorize("hasRole('ADMIN') or hasAnyAuthority('ACCESS_SUBCULTURES','ACCESS_DISCARDS','ACCESS_PLANT_EXIT')")
     ScanDetails scan(@PathVariable String barcode) {
         var today = LocalDate.now();
         int currentWeek = today.get(WeekFields.ISO.weekOfWeekBasedYear());
@@ -59,11 +60,13 @@ public class WorkflowController {
         if (subculture.isPresent()) {
             var item = subculture.get(); var plant = item.getParent().getPlant();
             return new ScanDetails(barcode, plant.getCode(), plant.getName(), item.getCycle(), item.getCycle() + 1,
-                item.getSubcultureWeek(), currentYear, currentWeek, item.getTechnician(), item.getStatus().name());
+                item.getSubcultureWeek(), currentYear, currentWeek, item.getTechnician(), item.getStatus().name(),
+                item.getPlantCount(), item.isRooting());
         }
         var mother = mothers.findByBarcode(barcode).orElseThrow(() -> new IllegalArgumentException("Barcode not found"));
         return new ScanDetails(barcode, mother.getPlant().getCode(), mother.getPlant().getName(), mother.getCycle(),
-            mother.getCycle() + 1, mother.getCultureWeek(), currentYear, currentWeek, mother.getTechnician(), mother.getStatus().name());
+            mother.getCycle() + 1, mother.getCultureWeek(), currentYear, currentWeek, mother.getTechnician(), mother.getStatus().name(),
+            mother.getPlantCount(), false);
     }
     @GetMapping("/dashboard") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DASHBOARD')") Map<String,Long> dashboard() {
         long availableMediaBottles = media.findAll().stream().mapToLong(MediaComposition::getAvailableBottles).sum();
