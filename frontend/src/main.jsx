@@ -536,11 +536,9 @@ function MediaCompositionPage() {
     hormones: "",
     ph: "",
     agar: "",
-    availableBottles: 0,
   };
   const [rows, setRows] = useState([]),
     [form, setForm] = useState(initial),
-    [stock, setStock] = useState({}),
     [error, setError] = useState("");
   const load = () => api.get("/media").then((r) => setRows(r.data));
   useEffect(() => {
@@ -555,15 +553,6 @@ function MediaCompositionPage() {
       load();
     } catch (e) {
       setError(e.response?.data?.message || "Could not save media.");
-    }
-  }
-  async function updateStock(item) {
-    const availableBottles = Number(stock[item.id] ?? item.availableBottles);
-    try {
-      await api.patch(`/media/${item.id}/stock`, { availableBottles });
-      load();
-    } catch (e) {
-      setError(e.response?.data?.message || "Could not update stock.");
     }
   }
   return (
@@ -623,18 +612,6 @@ function MediaCompositionPage() {
               required
             />
           </label>
-          <label>
-            Prepared bottle count
-            <input
-              type="number"
-              min="0"
-              value={form.availableBottles}
-              onChange={(e) =>
-                setForm({ ...form, availableBottles: e.target.value })
-              }
-              required
-            />
-          </label>
           <button>Save media</button>
         </form>
         <section className="panel table-wrap">
@@ -644,7 +621,6 @@ function MediaCompositionPage() {
                 <th>Code / recipe</th>
                 <th>Hormones</th>
                 <th>Available bottles</th>
-                <th>Update stock</th>
               </tr>
             </thead>
             <tbody>
@@ -657,24 +633,6 @@ function MediaCompositionPage() {
                   <td>{item.hormones || "—"}</td>
                   <td>
                     <b>{item.availableBottles}</b>
-                  </td>
-                  <td>
-                    <div className="stock-editor">
-                      <input
-                        type="number"
-                        min="0"
-                        value={stock[item.id] ?? item.availableBottles}
-                        onChange={(e) =>
-                          setStock({ ...stock, [item.id]: e.target.value })
-                        }
-                      />
-                      <button
-                        className="secondary compact"
-                        onClick={() => updateStock(item)}
-                      >
-                        Update
-                      </button>
-                    </div>
                   </td>
                 </tr>
               ))}
@@ -694,7 +652,7 @@ function MediaBottlesPage({ user }) {
     [error, setError] = useState("");
   async function load() {
     const [media, preparations] = await Promise.all([
-      api.get("/media"),
+      api.get("/media/options"),
       api.get("/media-preparations"),
     ]);
     setCompositions(media.data);

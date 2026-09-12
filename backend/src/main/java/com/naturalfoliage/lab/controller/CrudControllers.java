@@ -35,8 +35,12 @@ class PlantController {
 class MediaController {
     private final MediaCompositionRepository repository;
     MediaController(MediaCompositionRepository repository) { this.repository = repository; }
-    @GetMapping @PreAuthorize("hasRole('ADMIN') or hasAnyAuthority('ACCESS_MEDIA','ACCESS_SUBCULTURES','ACCESS_MOTHER_BOTTLES')")
+    @GetMapping @PreAuthorize("hasRole('ADMIN')")
     List<MediaComposition> all() { return repository.findAll(); }
+    record MediaLookup(Long id, String code, String basalMedia, int availableBottles) {}
+    @GetMapping("/options") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_MEDIA')")
+    List<MediaLookup> options() { return repository.findAll().stream()
+        .map(item -> new MediaLookup(item.getId(), item.getCode(), item.getBasalMedia(), item.getAvailableBottles())).toList(); }
     @PostMapping @PreAuthorize("hasRole('ADMIN')") @ResponseStatus(HttpStatus.CREATED)
     MediaComposition create(@Valid @RequestBody MediaComposition media) { return repository.save(media); }
     record StockRequest(@Min(0) int availableBottles) {}
