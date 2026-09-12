@@ -845,8 +845,8 @@ function MediaBottlesPage({ user }) {
           prepared. Stock updates automatically.
         </p>
       </header>
-      <section className="media-preparation-layout">
-        <form className="panel form media-preparation-form" onSubmit={save}>
+      <section className="split workflow-layout">
+        <form className="panel form" onSubmit={save}>
           <h2>New preparation</h2>
           {error && <div className="error">{error}</div>}
           <label>
@@ -863,12 +863,12 @@ function MediaBottlesPage({ user }) {
                 </option>
               ))}
             </select>
-            {selected && (
-              <div className="stock-status">
-                Currently available: <b>{selected.availableBottles}</b> bottles
-              </div>
-            )}
           </label>
+          {selected && (
+            <div className="stock-status">
+              Currently available: <b>{selected.availableBottles}</b> bottles
+            </div>
+          )}
           <label>
             Number of prepared bottles
             <input
@@ -1023,25 +1023,6 @@ function SubculturePage({ user, sessionLaminaFlow }) {
           every child barcode.
         </p>
       </header>
-      <section className="panel table-wrap recent-subcultures">
-        <div className="line-head">
-          <div>
-            <p className="eyebrow">RECENTLY ADDED</p>
-            <h2>{admin ? "All subculture bottles" : "Your recent subculture bottles"}</h2>
-          </div>
-          <button
-            type="button"
-            disabled={!selectedForPrint.length}
-            onClick={() => window.print()}
-          >
-            Print selected ({selectedForPrint.length})
-          </button>
-        </div>
-        <table>
-          <thead><tr><th>Print</th><th>Barcode</th><th>Plant</th><th>Cycle / week</th><th>Type</th>{admin && <><th>Technician</th><th>Lamina flow</th></>}<th>Status</th></tr></thead>
-          <tbody>{rows.map((item) => <tr key={item.id}><td><input type="checkbox" checked={selectedForPrint.includes(item.id)} onChange={() => togglePrint(item.id)}/></td><td><b>{item.barcode}</b></td><td>{item.parent.plant.name}</td><td>C{item.cycle} · W{item.subcultureWeek}</td><td>{item.rooting ? "Rooting" : "Multiply"}</td>{admin && <><td>{item.technician}</td><td>{item.laminaFlow || "—"}</td></>}<td><span className="badge">{item.status}</span></td></tr>)}</tbody>
-        </table>
-      </section>
       <section className="panel subculture-form">
         <div className="session-fields">
           {admin ? <><label>Technician<select value={technicianUsername} onChange={(e) => setTechnicianUsername(e.target.value)}>{staff.map((person) => <option value={person.username} key={person.id}>{person.fullName} ({person.username})</option>)}</select></label><label>Lamina flow<select value={laminaFlow} onChange={(e) => setLaminaFlow(e.target.value)}><option>LF-01</option><option>LF-02</option><option>LF-03</option><option>LF-04</option></select></label></> : <div className="stock-status">Session: <b>{user.fullName}</b> · Lamina flow: <b>{laminaFlow}</b></div>}
@@ -1212,6 +1193,25 @@ function SubculturePage({ user, sessionLaminaFlow }) {
         {!created.length && selectedForPrint.length > 0 && (
           <div className="barcode-sheet">{printRows.map((item) => <div className="print-label" key={item.id}><Barcode value={item.barcode} width={1.2} height={42} fontSize={10} margin={0}/><span>{item.parent.plant.code} · Week {item.subcultureWeek} · Cycle {item.cycle}</span></div>)}</div>
         )}
+      </section>
+      <section className="panel table-wrap recent-subcultures">
+        <div className="line-head">
+          <div>
+            <p className="eyebrow">RECENTLY ADDED</p>
+            <h2>{admin ? "All subculture bottles" : "Your recent subculture bottles"}</h2>
+          </div>
+          <button
+            type="button"
+            disabled={!selectedForPrint.length}
+            onClick={() => window.print()}
+          >
+            Print selected ({selectedForPrint.length})
+          </button>
+        </div>
+        <table>
+          <thead><tr><th>Print</th><th>Barcode</th><th>Plant</th><th>Cycle / week</th><th>Type</th>{admin && <><th>Technician</th><th>Lamina flow</th></>}<th>Status</th></tr></thead>
+          <tbody>{rows.map((item) => <tr key={item.id}><td><input type="checkbox" checked={selectedForPrint.includes(item.id)} onChange={() => togglePrint(item.id)}/></td><td><b>{item.barcode}</b></td><td>{item.parent.plant.name}</td><td>C{item.cycle} · W{item.subcultureWeek}</td><td>{item.rooting ? "Rooting" : "Multiply"}</td>{admin && <><td>{item.technician}</td><td>{item.laminaFlow || "—"}</td></>}<td><span className="badge">{item.status}</span></td></tr>)}</tbody>
+        </table>
       </section>
     </>
   );
