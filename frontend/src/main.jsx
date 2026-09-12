@@ -255,7 +255,8 @@ function OperationalTables() {
 
 function Dashboard({ user }) {
   const [d, setD] = useState({}),
-    [mediaStock, setMediaStock] = useState([]);
+    [mediaStock, setMediaStock] = useState([]),
+    [mediaExpanded, setMediaExpanded] = useState(false);
   useEffect(() => {
     api.get("/dashboard").then((r) => setD(r.data));
     async function loadMediaStock() {
@@ -280,9 +281,13 @@ function Dashboard({ user }) {
     loadMediaStock();
   }, []);
   const tech = user.role === "TECHNICIAN";
+  const availableMediaBottles = mediaStock.reduce(
+    (total, item) => total + Number(item.availableBottles || 0),
+    0,
+  );
   const cards = [
     ["Registered plants", d.plants, "plant"],
-    ["Available media bottles", d.availableMediaBottles, "media"],
+    ["Available media bottles", availableMediaBottles, "media"],
     ["Active initiations", d.activeMothers, "mother"],
     ["Active subcultures", d.activeSubcultures, "culture"],
     ["Total discards", d.discards, "discard"],
@@ -300,10 +305,34 @@ function Dashboard({ user }) {
       </header>
       <section className="cards">
         {cards.map(([l, v, c]) => (
-          <article className={`stat ${c}`} key={l}>
+          <article
+            className={`stat ${c} ${c === "media" ? "expandable" : ""}`}
+            key={l}
+            onClick={
+              c === "media" ? () => setMediaExpanded((open) => !open) : undefined
+            }
+            onKeyDown={
+              c === "media"
+                ? (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setMediaExpanded((open) => !open);
+                    }
+                  }
+                : undefined
+            }
+            role={c === "media" ? "button" : undefined}
+            tabIndex={c === "media" ? 0 : undefined}
+            aria-expanded={c === "media" ? mediaExpanded : undefined}
+          >
             <span>{l}</span>
             <strong>{v ?? "—"}</strong>
-            {c === "media" && mediaStock.length > 0 && (
+            {c === "media" && (
+              <small className="stock-toggle">
+                {mediaExpanded ? "Hide composition details" : "View composition details"}
+              </small>
+            )}
+            {c === "media" && mediaExpanded && mediaStock.length > 0 && (
               <div className="media-stock-list">
                 {mediaStock.map((item) => (
                   <div key={item.id}>
