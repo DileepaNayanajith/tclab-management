@@ -6,6 +6,8 @@ import com.naturalfoliage.lab.service.LabWorkflowService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import java.util.*;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -18,14 +20,14 @@ public class WorkflowController {
     public WorkflowController(LabWorkflowService workflow, DiscardRepository discards, PlantRepository plants, MediaCompositionRepository media, MotherBottleRepository mothers, SubcultureRepository subcultures) {
         this.workflow = workflow; this.discards = discards; this.plants = plants; this.media = media; this.mothers = mothers; this.subcultures = subcultures;
     }
-    public record DiscardRequest(String barcode, String reason) {}
+    public record DiscardRequest(@NotBlank String barcode, @NotBlank String reason) {}
     @GetMapping("/discards") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DISCARDS')") List<DiscardRecord> discards(Authentication auth) {
         var all = discards.findAll();
         if (auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) return all;
         return all.stream().filter(item -> auth.getName().equals(item.getTechnician()))
             .sorted(Comparator.comparing(DiscardRecord::getId).reversed()).limit(20).toList();
     }
-    @PostMapping("/discards") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DISCARDS')") DiscardRecord discard(@RequestBody DiscardRequest request, Authentication auth) { return workflow.discard(request.barcode(), request.reason(), auth.getName()); }
+    @PostMapping("/discards") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DISCARDS')") DiscardRecord discard(@Valid @RequestBody DiscardRequest request, Authentication auth) { return workflow.discard(request.barcode(), request.reason(), auth.getName()); }
     public record Option(Long id, String label) {}
     public record MediaOption(Long id, String label, int availableBottles) {}
     public record BarcodeOption(String value, String label) {}

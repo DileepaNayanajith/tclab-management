@@ -1102,7 +1102,8 @@ function DiscardPage({ user }) {
   const [rows, setRows] = useState([]),
     [options, setOptions] = useState({ bottles: [] }),
     [barcode, setBarcode] = useState(""),
-    [reason, setReason] = useState(""),
+    [selectedReasons, setSelectedReasons] = useState([]),
+    [otherReason, setOtherReason] = useState(""),
     [scan, setScan] = useState(null),
     [error, setError] = useState("");
   async function load() {
@@ -1131,10 +1132,19 @@ function DiscardPage({ user }) {
   async function save(e) {
     e.preventDefault();
     setError("");
+    const reason = selectedReasons
+      .map((item) => (item === "Other" ? otherReason.trim() : item))
+      .filter(Boolean)
+      .join(", ");
+    if (!reason) {
+      setError("Select at least one discard reason.");
+      return;
+    }
     try {
       await api.post("/discards", { barcode, reason });
       setBarcode("");
-      setReason("");
+      setSelectedReasons([]);
+      setOtherReason("");
       setScan(null);
       await load();
     } catch (e) {
@@ -1142,6 +1152,13 @@ function DiscardPage({ user }) {
     }
   }
   const admin = user.role === "ADMIN";
+  function toggleReason(reason) {
+    setSelectedReasons((current) =>
+      current.includes(reason)
+        ? current.filter((item) => item !== reason)
+        : [...current, reason],
+    );
+  }
   return (
     <>
       <header>
@@ -1204,15 +1221,35 @@ function DiscardPage({ user }) {
           </div>
         )}
         <form className="form discard-reason" onSubmit={save}>
-          <label>
-            Discard reason
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Contamination, damage, etc."
-              required
-            />
-          </label>
+          <fieldset className="access-picker">
+            <legend>Discard reason</legend>
+            <p>Select every reason that applies.</p>
+            <div>
+              {["Contamination", "Bacterial", "Plant dead", "Other"].map(
+                (reason) => (
+                  <label className="access-option" key={reason}>
+                    <input
+                      type="checkbox"
+                      checked={selectedReasons.includes(reason)}
+                      onChange={() => toggleReason(reason)}
+                    />
+                    <span>{reason}</span>
+                  </label>
+                ),
+              )}
+            </div>
+          </fieldset>
+          {selectedReasons.includes("Other") && (
+            <label>
+              Other reason
+              <textarea
+                value={otherReason}
+                onChange={(e) => setOtherReason(e.target.value)}
+                placeholder="Enter the other discard reason"
+                required
+              />
+            </label>
+          )}
           <button disabled={!scan}>Confirm discard & reduce inventory</button>
         </form>
       </section>
