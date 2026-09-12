@@ -845,8 +845,8 @@ function MediaBottlesPage({ user }) {
           prepared. Stock updates automatically.
         </p>
       </header>
-      <section className="split workflow-layout">
-        <form className="panel form" onSubmit={save}>
+      <section className="media-preparation-layout">
+        <form className="panel form media-preparation-form" onSubmit={save}>
           <h2>New preparation</h2>
           {error && <div className="error">{error}</div>}
           <label>
@@ -863,12 +863,12 @@ function MediaBottlesPage({ user }) {
                 </option>
               ))}
             </select>
+            {selected && (
+              <div className="stock-status">
+                Currently available: <b>{selected.availableBottles}</b> bottles
+              </div>
+            )}
           </label>
-          {selected && (
-            <div className="stock-status">
-              Currently available: <b>{selected.availableBottles}</b> bottles
-            </div>
-          )}
           <label>
             Number of prepared bottles
             <input
