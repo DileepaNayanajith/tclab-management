@@ -14,6 +14,7 @@ import {
   Users,
   BadgeDollarSign,
   ShoppingCart,
+  BarChart3,
 } from "lucide-react";
 import "./styles.css";
 import "./staff.css";
@@ -22,6 +23,7 @@ import "./dashboard.css";
 const api = axios.create({ baseURL: "/api" });
 const nav = [
   ["Dashboard", LayoutDashboard],
+  ["Analytics", BarChart3],
   ["Plants", Sprout],
   ["Media Compositions", FlaskConical],
   ["Media Bottles", PackageOpen],
@@ -253,6 +255,92 @@ function OperationalTables() {
         </table>
       </article>
     </section>
+  );
+}
+
+function AnalyticsPage() {
+  const [records, setRecords] = useState([]),
+    [xAxis, setXAxis] = useState("month"),
+    [yAxis, setYAxis] = useState("plants"),
+    [reasonFilter, setReasonFilter] = useState("Contamination"),
+    [error, setError] = useState("");
+
+  useEffect(() => {
+    api
+      .get("/discards")
+      .then((response) => setRecords(response.data))
+      .catch((requestError) =>
+        setError(requestError.response?.data?.message || "Could not load analytics data."),
+      );
+  }, []);
+
+  const filtered = records.filter(
+    (item) =>
+      reasonFilter === "All" ||
+      item.reason.toLowerCase().includes(reasonFilter.toLowerCase()),
+  );
+  function dimensionValues(item) {
+    const date = new Date(`${item.discardedDate}T00:00:00`);
+    const dimensions = {
+      laminaFlow: item.sourceLaminaFlow || "Unknown / legacy data",
+      technician: item.sourceTechnician || "Unknown",
+      discardedBy: item.technician || "Unknown",
+      year: String(date.getFullYear()),
+      month: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+      plant: item.plantCode || "Unknown",
+      cycle: `Cycle ${item.cycle}`,
+      week: `Week ${item.cultureWeek}`,
+    };
+    if (xAxis === "reason") {
+      return item.reason.split(",").map((reason) => reason.trim()).filter(Boolean);
+    }
+    return [dimensions[xAxis]];
+  }
+  const grouped = new Map();
+  filtered.forEach((item) => {
+    dimensionValues(item).forEach((label) => {
+      const amount = yAxis === "plants" ? Number(item.plantCount || 0) : 1;
+      grouped.set(label, (grouped.get(label) || 0) + amount);
+    });
+  });
+  const chartData = [...grouped.entries()]
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) =>
+      ["year", "month", "week", "cycle"].includes(xAxis)
+        ? a.label.localeCompare(b.label, undefined, { numeric: true })
+        : b.value - a.value,
+    );
+  const maximum = Math.max(1, ...chartData.map((item) => item.value));
+  const totalPlants = filtered.reduce(
+    (total, item) => total + Number(item.plantCount || 0),
+    0,
+  );
+
+  return (
+    <>
+      <header>
+        <p className="eyebrow">ADMIN ANALYTICS</p>
+        <h1>Laboratory analytics</h1>
+        <p className="muted">Choose an X-axis and Y-axis to generate the graph automatically.</p>
+      </header>
+      {error && <div className="error">{error}</div>}
+      <section className="analytics-summary">
+        <article className="stat"><span>Filtered discard bottles</span><strong>{filtered.length}</strong></article>
+        <article className="stat discard"><span>Plants affected</span><strong>{totalPlants}</strong></article>
+      </section>
+      <section className="panel analytics-panel">
+        <div className="chart-controls">
+          <label>Reason filter<select value={reasonFilter} onChange={(event) => setReasonFilter(event.target.value)}><option>Contamination</option><option>Bacterial</option><option>Plant dead</option><option>All</option></select></label>
+          <label>X-axis<select value={xAxis} onChange={(event) => setXAxis(event.target.value)}><option value="month">Year / month</option><option value="year">Year</option><option value="laminaFlow">Lamina flow</option><option value="technician">Subculture technician</option><option value="discardedBy">Discarded by</option><option value="plant">Plant variety</option><option value="reason">Discard reason</option><option value="cycle">Culture cycle</option><option value="week">Culture week</option></select></label>
+          <label>Y-axis<select value={yAxis} onChange={(event) => setYAxis(event.target.value)}><option value="plants">Number of plants affected</option><option value="bottles">Number of bottles discarded</option></select></label>
+        </div>
+        <div className="chart-title"><h2>{reasonFilter} by {xAxis === "laminaFlow" ? "lamina flow" : xAxis}</h2><span>{yAxis === "plants" ? "Plants affected" : "Bottles discarded"}</span></div>
+        <div className="auto-bar-chart">
+          {chartData.map((item) => <div className="chart-row" key={item.label}><span title={item.label}>{item.label}</span><div className="chart-track"><div style={{width: `${Math.max(3, (item.value / maximum) * 100)}%`}}></div></div><b>{item.value}</b></div>)}
+          {!chartData.length && <div className="empty">No matching discard data yet.</div>}
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -2143,6 +2231,8 @@ function App() {
   let content =
     activePage === "Dashboard" ? (
       <Dashboard user={user} />
+    ) : activePage === "Analytics" ? (
+      <AnalyticsPage />
     ) : activePage === "Staff" ? (
       <StaffPage />
     ) : activePage === "Media Compositions" ? (
