@@ -344,6 +344,25 @@ select {
   background: #fff0ee;
   color: #a23e34;
 }
+.pos-panel { display: grid; gap: 22px; }
+.pos-customer { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.pos-quantity { width: 100px; }
+.pos-total { display: flex; justify-content: flex-end; align-items: center; gap: 18px; }
+.pos-total span { color: #667970; font-size: 13px; font-weight: 700; }
+.pos-total strong { font: 800 24px Manrope; }
+.invoice { max-width: 900px; margin-inline: auto; }
+.invoice-head, .invoice-meta { display: flex; justify-content: space-between; gap: 20px; }
+.invoice-meta { margin: 24px 0; padding: 16px; border-radius: 10px; background: #f1f7f4; }
+.invoice-meta span { display: grid; gap: 4px; }
+.invoice-meta small { color: #71847a; font-size: 9px; font-weight: 800; letter-spacing: 1px; }
+.invoice-grand-total { margin-top: 20px; text-align: right; font: 800 22px Manrope; }
+@media (max-width: 700px) { .pos-customer { grid-template-columns: 1fr; } .pos-total { align-items: stretch; flex-direction: column; } }
+@media print {
+  body * { visibility: hidden; }
+  #sale-invoice, #sale-invoice * { visibility: visible; }
+  #sale-invoice { position: absolute; inset: 0; max-width: none; border: 0; box-shadow: none; }
+  .no-print { display: none !important; }
+}
 .culture-lines {
   margin: 18px 0;
   padding: 15px;

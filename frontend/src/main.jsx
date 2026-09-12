@@ -13,6 +13,7 @@ import {
   LogOut,
   Users,
   BadgeDollarSign,
+  ShoppingCart,
 } from "lucide-react";
 import "./styles.css";
 import "./staff.css";
@@ -29,6 +30,7 @@ const nav = [
   ["Discards", Trash2],
   ["Plant Exit", BadgeDollarSign],
   ["Price List", BadgeDollarSign],
+  ["Sales / POS", ShoppingCart],
   ["Staff", Users],
 ];
 const accessOptions = [
@@ -40,6 +42,7 @@ const accessOptions = [
   ["Discards", "ACCESS_DISCARDS"],
   ["Plant Exit", "ACCESS_PLANT_EXIT"],
   ["Price List", "ACCESS_PRICE_LIST"],
+  ["Sales / POS", "ACCESS_SALES"],
 ];
 const hormoneOptions = [
   "BAP",
@@ -256,6 +259,7 @@ function OperationalTables() {
 function Dashboard({ user }) {
   const [d, setD] = useState({}),
     [mediaStock, setMediaStock] = useState([]),
+    [rootedStock, setRootedStock] = useState([]),
     [mediaExpanded, setMediaExpanded] = useState(false);
   useEffect(() => {
     api.get("/dashboard").then((r) => setD(r.data));
@@ -279,10 +283,32 @@ function Dashboard({ user }) {
       }
     }
     loadMediaStock();
+    api
+      .get("/sales/inventory")
+      .then((response) => setRootedStock(response.data))
+      .catch(() =>
+        api.get("/dashboard/details").then((response) =>
+          setRootedStock(
+            response.data.availablePlants.map((item) => ({
+              plantCode: item.plantCode,
+              rootedQuantity: item.rooting,
+              sellableQuantity: Math.floor(item.rooting * 0.8),
+            })),
+          ),
+        ),
+      );
   }, []);
   const tech = user.role === "TECHNICIAN";
   const availableMediaBottles = mediaStock.reduce(
     (total, item) => total + Number(item.availableBottles || 0),
+    0,
+  );
+  const rootedTotal = rootedStock.reduce(
+    (total, item) => total + Number(item.rootedQuantity || 0),
+    0,
+  );
+  const sellableTotal = rootedStock.reduce(
+    (total, item) => total + Number(item.sellableQuantity || 0),
     0,
   );
   const cards = [
@@ -290,6 +316,7 @@ function Dashboard({ user }) {
     ["Available media bottles", availableMediaBottles, "media"],
     ["Active initiations", d.activeMothers, "mother"],
     ["Active subcultures", d.activeSubcultures, "culture"],
+    ["Rooted plants", rootedTotal, "rooted"],
     ["Total discards", d.discards, "discard"],
   ];
   return (
@@ -330,6 +357,11 @@ function Dashboard({ user }) {
             {c === "media" && (
               <small className="stock-toggle">
                 {mediaExpanded ? "Hide composition details" : "View composition details"}
+              </small>
+            )}
+            {c === "rooted" && (
+              <small className="sellable-summary">
+                Sellable 80%: <b>{sellableTotal}</b> plants
               </small>
             )}
             {c === "media" && mediaExpanded && mediaStock.length > 0 && (
@@ -1427,6 +1459,114 @@ function DiscardPage({ user }) {
   );
 }
 
+function SalesPage() {
+  const [inventory, setInventory] = useState([]),
+    [invoices, setInvoices] = useState([]),
+    [quantities, setQuantities] = useState({}),
+    [customerName, setCustomerName] = useState(""),
+    [customerContact, setCustomerContact] = useState(""),
+    [lastInvoice, setLastInvoice] = useState(null),
+    [error, setError] = useState("");
+
+  async function load() {
+    try {
+      const [stock, sales] = await Promise.all([
+        api.get("/sales/inventory"),
+        api.get("/sales"),
+      ]);
+      setInventory(stock.data);
+      setInvoices(sales.data);
+    } catch (requestError) {
+      setError(
+        requestError.response?.status === 404 || requestError.response?.status === 405
+          ? "Restart the backend once to activate Sales / POS."
+          : requestError.response?.data?.message || "Could not load sales data.",
+      );
+    }
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  const items = inventory
+    .map((item) => ({
+      ...item,
+      quantity: Number(quantities[item.plantCode] || 0),
+    }))
+    .filter((item) => item.quantity > 0);
+  const total = items.reduce(
+    (sum, item) => sum + item.quantity * item.unitPrice,
+    0,
+  );
+
+  async function completeSale(event) {
+    event.preventDefault();
+    setError("");
+    if (!items.length) {
+      setError("Add at least one plant quantity to the sale.");
+      return;
+    }
+    try {
+      const { data } = await api.post("/sales", {
+        customerName,
+        customerContact,
+        items: items.map((item) => ({
+          plantCode: item.plantCode,
+          quantity: item.quantity,
+        })),
+      });
+      setLastInvoice(data);
+      setCustomerName("");
+      setCustomerContact("");
+      setQuantities({});
+      await load();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Could not complete sale.");
+    }
+  }
+
+  return (
+    <>
+      <header className="no-print">
+        <p className="eyebrow">ROOTED PLANT SALES</p>
+        <h1>Sales / POS</h1>
+        <p className="muted">
+          Sell up to 80% of available rooted plants and print the customer invoice.
+        </p>
+      </header>
+      {error && <div className="error no-print">{error}</div>}
+      <form className="panel pos-panel no-print" onSubmit={completeSale}>
+        <div className="pos-customer">
+          <label>Customer name<input value={customerName} onChange={(event) => setCustomerName(event.target.value)} required /></label>
+          <label>Contact / phone<input value={customerContact} onChange={(event) => setCustomerContact(event.target.value)} /></label>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Plant</th><th>Total rooted</th><th>Sellable 80%</th><th>Unit price</th><th>Sale quantity</th><th>Subtotal</th></tr></thead>
+            <tbody>
+              {inventory.map((item) => {
+                const quantity = Number(quantities[item.plantCode] || 0);
+                return <tr key={item.plantCode}><td><b>{item.plantCode}</b><small className="cell-sub">{item.plantName}</small></td><td>{item.rootedQuantity}</td><td><span className="badge">{item.sellableQuantity}</span></td><td>LKR {item.unitPrice.toFixed(2)}</td><td><input className="pos-quantity" type="number" min="0" max={item.sellableQuantity} value={quantities[item.plantCode] || ""} onChange={(event) => setQuantities({...quantities, [item.plantCode]: event.target.value})} /></td><td>LKR {(quantity * item.unitPrice).toFixed(2)}</td></tr>;
+              })}
+              {!inventory.length && <tr><td colSpan="6" className="empty">No rooted plants are available.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <div className="pos-total"><span>Invoice total</span><strong>LKR {total.toFixed(2)}</strong><button>Complete sale</button></div>
+      </form>
+      {lastInvoice && (
+        <section className="panel invoice" id="sale-invoice">
+          <div className="invoice-head"><div><p className="eyebrow">NATURAL FOLIAGE TC LAB</p><h2>Sales Invoice</h2></div><button className="no-print" onClick={() => window.print()}>Print invoice</button></div>
+          <div className="invoice-meta"><span><small>INVOICE</small><b>{lastInvoice.invoiceNumber}</b></span><span><small>CUSTOMER</small><b>{lastInvoice.customerName}</b></span><span><small>DATE</small><b>{new Date(lastInvoice.soldAt).toLocaleString()}</b></span></div>
+          <table><thead><tr><th>Plant</th><th>Quantity</th><th>Unit price</th><th>Total</th></tr></thead><tbody>{lastInvoice.items.map((item) => <tr key={item.id}><td>{item.plantCode} — {item.plantName}</td><td>{item.quantity}</td><td>LKR {item.unitPrice.toFixed(2)}</td><td>LKR {item.lineTotal.toFixed(2)}</td></tr>)}</tbody></table>
+          <div className="invoice-grand-total">Total: LKR {lastInvoice.totalAmount.toFixed(2)}</div>
+        </section>
+      )}
+      <section className="panel table-wrap no-print"><h2>Recent invoices</h2><table><thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Sold by</th><th>Total</th></tr></thead><tbody>{invoices.map((item) => <tr key={item.id}><td><b>{item.invoiceNumber}</b></td><td>{new Date(item.soldAt).toLocaleString()}</td><td>{item.customerName}</td><td>{item.soldBy}</td><td>LKR {item.totalAmount.toFixed(2)}</td></tr>)}{!invoices.length && <tr><td colSpan="5" className="empty">No invoices yet.</td></tr>}</tbody></table></section>
+    </>
+  );
+}
+
 function PlantExitPage({ user }) {
   const [rows,setRows]=useState([]),[options,setOptions]=useState({bottles:[]}),[barcode,setBarcode]=useState(''),[scan,setScan]=useState(null),[quantity,setQuantity]=useState(''),[destination,setDestination]=useState('HARDENING'),[reference,setReference]=useState(''),[error,setError]=useState('');
   async function load(){const [exits,lookups]=await Promise.all([api.get('/plant-exits'),api.get('/workflow/options')]);setRows(exits.data);setOptions(lookups.data)}
@@ -1984,6 +2124,8 @@ function App() {
       <DiscardPage user={user} />
     ) : activePage === "Plant Exit" ? (
       <PlantExitPage user={user} />
+    ) : activePage === "Sales / POS" ? (
+      <SalesPage />
     ) : configs[activePage] ? (
       <CrudPage type={activePage} user={user} />
     ) : (
