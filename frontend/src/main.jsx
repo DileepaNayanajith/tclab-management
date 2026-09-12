@@ -696,10 +696,27 @@ function MediaBottlesPage({ user }) {
     e.preventDefault();
     setError("");
     try {
-      await api.post("/media-preparations", {
-        mediaId,
-        bottleCount: Number(bottleCount),
-      });
+      const amount = Number(bottleCount);
+      try {
+        await api.post("/media-preparations", {
+          mediaId,
+          bottleCount: amount,
+        });
+      } catch (requestError) {
+        if (requestError.response?.status !== 404 && requestError.response?.status !== 405) {
+          throw requestError;
+        }
+
+        // Compatibility for an already-running backend from before preparation
+        // history was introduced. It still updates the composition's stock.
+        const composition = compositions.find(
+          (item) => String(item.id) === String(mediaId),
+        );
+        if (!composition) throw requestError;
+        await api.patch(`/media/${mediaId}/stock`, {
+          availableBottles: composition.availableBottles + amount,
+        });
+      }
       setBottleCount("");
       await load();
     } catch (e) {
