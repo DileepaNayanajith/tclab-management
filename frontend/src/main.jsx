@@ -651,12 +651,43 @@ function MediaBottlesPage({ user }) {
     [bottleCount, setBottleCount] = useState(""),
     [error, setError] = useState("");
   async function load() {
-    const [media, preparations] = await Promise.all([
-      api.get("/media/options"),
-      api.get("/media-preparations"),
-    ]);
-    setCompositions(media.data);
-    setRows(preparations.data);
+    setError("");
+
+    // Load the two sections independently. This keeps the composition selector
+    // usable when a previously started backend does not yet expose preparation
+    // history, and the fallback supports that backend's media lookup route.
+    try {
+      let media;
+      try {
+        media = await api.get("/media/options");
+      } catch (requestError) {
+        if (requestError.response?.status !== 404 && requestError.response?.status !== 405) {
+          throw requestError;
+        }
+        media = await api.get("/media");
+      }
+      setCompositions(media.data);
+    } catch (requestError) {
+      setCompositions([]);
+      setError(
+        requestError.response?.data?.message ||
+          "Could not load saved media compositions.",
+      );
+    }
+
+    try {
+      const preparations = await api.get("/media-preparations");
+      setRows(preparations.data);
+    } catch (requestError) {
+      if (requestError.response?.status !== 404 && requestError.response?.status !== 405) {
+        setError((current) =>
+          current ||
+          requestError.response?.data?.message ||
+          "Could not load media preparation history.",
+        );
+      }
+      setRows([]);
+    }
   }
   useEffect(() => {
     load();
