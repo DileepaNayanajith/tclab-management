@@ -18,7 +18,7 @@ public class PlantExitController {
     private final PlantExitRepository exits; private final SubcultureRepository subcultures;
     public PlantExitController(PlantExitRepository exits, SubcultureRepository subcultures) { this.exits = exits; this.subcultures = subcultures; }
     public record ExitRequest(@NotBlank String barcode, @Min(1) int quantity,
-        @NotBlank @Pattern(regexp = "SELLING|HARDENING") String destination, String reference) {}
+        @NotBlank @Pattern(regexp = "HARDENING") String destination, String reference) {}
     @GetMapping public List<PlantExit> all(Authentication auth) {
         var all = exits.findAll();
         if (auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) return all;
