@@ -52,14 +52,15 @@ class MotherBottleController {
     private final MotherBottleRepository repository; private final PlantRepository plants; private final MediaCompositionRepository media;
     MotherBottleController(MotherBottleRepository repository, PlantRepository plants, MediaCompositionRepository media) { this.repository = repository; this.plants = plants; this.media = media; }
     record MotherRequest(@NotNull Long plantId, @NotNull Long mediaId,
-        @Min(1) int plantCount, @Min(0) int cycle, @Min(1) int cultureWeek, String laminaFlow) {}
+        @Min(1) int plantCount, @Min(0) int cycle, String laminaFlow) {}
     @GetMapping List<MotherBottle> all() { return repository.findAll(); }
     @PostMapping @ResponseStatus(HttpStatus.CREATED) MotherBottle create(@Valid @RequestBody MotherRequest input, Authentication auth) {
         var plant = plants.findById(input.plantId()).orElseThrow(() -> new IllegalArgumentException("Plant not found"));
         var bottle = new MotherBottle(); bottle.setBarcode(nextBarcode(plant.getCode()));
         bottle.setPlant(plant);
         bottle.setMedia(media.findById(input.mediaId()).orElseThrow(() -> new IllegalArgumentException("Media not found")));
-        bottle.setPlantCount(input.plantCount()); bottle.setCycle(input.cycle()); bottle.setCultureWeek(input.cultureWeek());
+        bottle.setPlantCount(input.plantCount()); bottle.setCycle(input.cycle());
+        bottle.setCultureWeek(LocalDate.now().get(WeekFields.ISO.weekOfWeekBasedYear()));
         bottle.setLaminaFlow(input.laminaFlow()); bottle.setTechnician(auth.getName()); return repository.save(bottle);
     }
 
