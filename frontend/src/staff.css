@@ -346,6 +346,13 @@ select {
 }
 .pos-panel { display: grid; gap: 22px; }
 .pos-customer { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.plant-search { position: relative; }
+.plant-search-results { display: grid; margin-top: 8px; border: 1px solid #dce7e1; border-radius: 10px; background: white; overflow: hidden; }
+.plant-search-results > div { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border-bottom: 1px solid #edf2ef; }
+.plant-search-results > div:last-child { border-bottom: 0; }
+.plant-search-results span { display: grid; gap: 3px; }
+.plant-search-results small { color: #687c72; }
+.plant-search-results p { margin: 0; padding: 18px; color: #7a8982; text-align: center; }
 .pos-quantity { width: 100px; }
 .pos-total { display: flex; justify-content: flex-end; align-items: center; gap: 18px; }
 .pos-total span { color: #667970; font-size: 13px; font-weight: 700; }

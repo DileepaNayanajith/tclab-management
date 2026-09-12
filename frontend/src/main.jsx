@@ -1463,6 +1463,8 @@ function SalesPage() {
   const [inventory, setInventory] = useState([]),
     [invoices, setInvoices] = useState([]),
     [quantities, setQuantities] = useState({}),
+    [selectedCodes, setSelectedCodes] = useState([]),
+    [search, setSearch] = useState(""),
     [customerName, setCustomerName] = useState(""),
     [customerContact, setCustomerContact] = useState(""),
     [lastInvoice, setLastInvoice] = useState(null),
@@ -1488,12 +1490,23 @@ function SalesPage() {
     load();
   }, []);
 
-  const items = inventory
+  const selectedPlants = inventory.filter((item) =>
+    selectedCodes.includes(item.plantCode),
+  );
+  const items = selectedPlants
     .map((item) => ({
       ...item,
       quantity: Number(quantities[item.plantCode] || 0),
     }))
     .filter((item) => item.quantity > 0);
+  const searchTerm = search.trim().toLowerCase();
+  const searchResults = searchTerm
+    ? inventory.filter(
+        (item) =>
+          item.plantCode.toLowerCase().includes(searchTerm) ||
+          item.plantName.toLowerCase().includes(searchTerm),
+      )
+    : [];
   const total = items.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0,
@@ -1519,6 +1532,7 @@ function SalesPage() {
       setCustomerName("");
       setCustomerContact("");
       setQuantities({});
+      setSelectedCodes([]);
       await load();
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Could not complete sale.");
@@ -1540,15 +1554,32 @@ function SalesPage() {
           <label>Customer name<input value={customerName} onChange={(event) => setCustomerName(event.target.value)} required /></label>
           <label>Contact / phone<input value={customerContact} onChange={(event) => setCustomerContact(event.target.value)} /></label>
         </div>
+        <div className="plant-search">
+          <label>
+            Search rooted plants by code or name
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Example: PHYM or Philodendron" />
+          </label>
+          {searchTerm && (
+            <div className="plant-search-results">
+              {searchResults.map((item) => (
+                <div key={item.plantCode}>
+                  <span><b>{item.plantCode}</b><small>{item.plantName} · {item.sellableQuantity} sellable</small></span>
+                  <button type="button" className="secondary compact" disabled={selectedCodes.includes(item.plantCode) || item.sellableQuantity < 1} onClick={() => { setSelectedCodes([...selectedCodes, item.plantCode]); setQuantities({...quantities, [item.plantCode]: 1}); setSearch(""); }}>Add</button>
+                </div>
+              ))}
+              {!searchResults.length && <p>No matching rooted plants.</p>}
+            </div>
+          )}
+        </div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Plant</th><th>Total rooted</th><th>Sellable 80%</th><th>Unit price</th><th>Sale quantity</th><th>Subtotal</th></tr></thead>
+            <thead><tr><th>Plant</th><th>Total rooted</th><th>Sellable 80%</th><th>Unit price</th><th>Sale quantity</th><th>Subtotal</th><th></th></tr></thead>
             <tbody>
-              {inventory.map((item) => {
+              {selectedPlants.map((item) => {
                 const quantity = Number(quantities[item.plantCode] || 0);
-                return <tr key={item.plantCode}><td><b>{item.plantCode}</b><small className="cell-sub">{item.plantName}</small></td><td>{item.rootedQuantity}</td><td><span className="badge">{item.sellableQuantity}</span></td><td>LKR {item.unitPrice.toFixed(2)}</td><td><input className="pos-quantity" type="number" min="0" max={item.sellableQuantity} value={quantities[item.plantCode] || ""} onChange={(event) => setQuantities({...quantities, [item.plantCode]: event.target.value})} /></td><td>LKR {(quantity * item.unitPrice).toFixed(2)}</td></tr>;
+                return <tr key={item.plantCode}><td><b>{item.plantCode}</b><small className="cell-sub">{item.plantName}</small></td><td>{item.rootedQuantity}</td><td><span className="badge">{item.sellableQuantity}</span></td><td>LKR {item.unitPrice.toFixed(2)}</td><td><input className="pos-quantity" type="number" min="1" max={item.sellableQuantity} value={quantities[item.plantCode] || ""} onChange={(event) => setQuantities({...quantities, [item.plantCode]: event.target.value})} /></td><td>LKR {(quantity * item.unitPrice).toFixed(2)}</td><td><button type="button" className="icon danger" aria-label={`Remove ${item.plantCode}`} onClick={() => { setSelectedCodes(selectedCodes.filter((code) => code !== item.plantCode)); const next = {...quantities}; delete next[item.plantCode]; setQuantities(next); }}><Trash2 size={16}/></button></td></tr>;
               })}
-              {!inventory.length && <tr><td colSpan="6" className="empty">No rooted plants are available.</td></tr>}
+              {!selectedPlants.length && <tr><td colSpan="7" className="empty">Search above and add plants to this sale.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1568,13 +1599,13 @@ function SalesPage() {
 }
 
 function PlantExitPage({ user }) {
-  const [rows,setRows]=useState([]),[options,setOptions]=useState({bottles:[]}),[barcode,setBarcode]=useState(''),[scan,setScan]=useState(null),[quantity,setQuantity]=useState(''),[destination,setDestination]=useState('HARDENING'),[reference,setReference]=useState(''),[error,setError]=useState('');
+  const [rows,setRows]=useState([]),[options,setOptions]=useState({bottles:[]}),[barcode,setBarcode]=useState(''),[scan,setScan]=useState(null),[quantity,setQuantity]=useState(''),[reference,setReference]=useState(''),[error,setError]=useState('');
   async function load(){const [exits,lookups]=await Promise.all([api.get('/plant-exits'),api.get('/workflow/options')]);setRows(exits.data);setOptions(lookups.data)}
   useEffect(()=>{load()},[]);
   async function detect(){setError('');try{const {data}=await api.get(`/workflow/scan/${encodeURIComponent(barcode)}`);setScan(data);setQuantity(data.plantCount)}catch(e){setScan(null);setError(e.response?.data?.message||'Barcode not found.')}}
-  async function save(e){e.preventDefault();setError('');try{await api.post('/plant-exits',{barcode,quantity:Number(quantity),destination,reference});setBarcode('');setScan(null);setQuantity('');setReference('');await load()}catch(e){setError(e.response?.data?.message||'Could not record plant exit.')}}
+  async function save(e){e.preventDefault();setError('');try{await api.post('/plant-exits',{barcode,quantity:Number(quantity),destination:'HARDENING',reference});setBarcode('');setScan(null);setQuantity('');setReference('');await load()}catch(e){setError(e.response?.data?.message||'Could not record hardening exit.')}}
   const admin=user.role==='ADMIN';
-  return <><header><p className="eyebrow">OUTSIDE THE LAB</p><h1>Plant exit</h1><p className="muted">Record healthy plants released for selling or hardening. Quantities are deducted from available inventory.</p></header><section className="split workflow-layout"><form className="panel form" onSubmit={save}><h2>Release plants</h2><label>Scan/read subculture barcode<input list="exit-barcodes" value={barcode} onChange={e=>setBarcode(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();detect()}}} required/></label><datalist id="exit-barcodes">{options.bottles.filter(item=>item.label.includes('Subculture')).map(item=><option value={item.value} key={item.value}>{item.label}</option>)}</datalist><button type="button" className="secondary" onClick={detect}>Detect barcode</button>{error&&<div className="error">{error}</div>}{scan&&<><div className="stock-status"><b>{scan.plantCode} — {scan.plantName}</b><br/>Available in bottle: {scan.plantCount} · {scan.rooting?'Rooting':'Multiply'}</div><label>Quantity leaving<input type="number" min="1" max={scan.plantCount} value={quantity} onChange={e=>setQuantity(e.target.value)} required/></label><label>Destination<select value={destination} onChange={e=>setDestination(e.target.value)}><option value="HARDENING">Hardening</option><option value="SELLING">Selling</option></select></label><label>{destination==='SELLING'?'Customer / order reference':'Hardening location / reference'}<input value={reference} onChange={e=>setReference(e.target.value)} placeholder="Optional reference"/></label><button>Confirm plant exit</button></>}</form><section className="panel table-wrap"><table><thead><tr><th>Date / time</th><th>Plant</th><th>Barcode</th><th>Quantity</th><th>Destination</th><th>Reference</th>{admin&&<th>Released by</th>}</tr></thead><tbody>{rows.map(item=><tr key={item.id}><td>{new Date(item.exitedAt).toLocaleString()}</td><td>{item.plantCode} — {item.plantName}</td><td><b>{item.barcode}</b></td><td>{item.quantity}</td><td><span className="badge">{item.destination}</span></td><td>{item.reference||'—'}</td>{admin&&<td>{item.technician}</td>}</tr>)}{!rows.length&&<tr><td colSpan={admin?7:6} className="empty">No plant exits yet.</td></tr>}</tbody></table></section></section></>
+  return <><header><p className="eyebrow">HARDENING</p><h1>Plants sent for hardening</h1><p className="muted">Record healthy plants moved from the laboratory to hardening. Customer sales are handled only through Sales / POS.</p></header><section className="split workflow-layout"><form className="panel form" onSubmit={save}><h2>Release to hardening</h2><label>Scan/read subculture barcode<input list="exit-barcodes" value={barcode} onChange={e=>setBarcode(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();detect()}}} required/></label><datalist id="exit-barcodes">{options.bottles.filter(item=>item.label.includes('Subculture')).map(item=><option value={item.value} key={item.value}>{item.label}</option>)}</datalist><button type="button" className="secondary" onClick={detect}>Detect barcode</button>{error&&<div className="error">{error}</div>}{scan&&<><div className="stock-status"><b>{scan.plantCode} — {scan.plantName}</b><br/>Available in bottle: {scan.plantCount} · {scan.rooting?'Rooting':'Multiply'}</div><label>Quantity sent to hardening<input type="number" min="1" max={scan.plantCount} value={quantity} onChange={e=>setQuantity(e.target.value)} required/></label><label>Hardening location / reference<input value={reference} onChange={e=>setReference(e.target.value)} placeholder="Optional reference"/></label><button>Confirm hardening exit</button></>}</form><section className="panel table-wrap"><table><thead><tr><th>Date / time</th><th>Plant</th><th>Barcode</th><th>Quantity</th><th>Reference</th>{admin&&<th>Released by</th>}</tr></thead><tbody>{rows.filter(item=>item.destination==='HARDENING').map(item=><tr key={item.id}><td>{new Date(item.exitedAt).toLocaleString()}</td><td>{item.plantCode} — {item.plantName}</td><td><b>{item.barcode}</b></td><td>{item.quantity}</td><td>{item.reference||'—'}</td>{admin&&<td>{item.technician}</td>}</tr>)}{!rows.some(item=>item.destination==='HARDENING')&&<tr><td colSpan={admin?6:5} className="empty">No hardening exits yet.</td></tr>}</tbody></table></section></section></>
 }
 
 function WorkflowPage({ type }) {
