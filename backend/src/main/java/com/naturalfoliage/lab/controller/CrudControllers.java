@@ -32,18 +32,41 @@ class PlantController {
 }
 
 @RestController @RequestMapping("/api/media")
-@PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_MEDIA')")
 class MediaController {
     private final MediaCompositionRepository repository;
     MediaController(MediaCompositionRepository repository) { this.repository = repository; }
-    @GetMapping List<MediaComposition> all() { return repository.findAll(); }
-    @PostMapping @ResponseStatus(HttpStatus.CREATED) MediaComposition create(@Valid @RequestBody MediaComposition media) { return repository.save(media); }
+    @GetMapping @PreAuthorize("hasRole('ADMIN') or hasAnyAuthority('ACCESS_MEDIA','ACCESS_SUBCULTURES','ACCESS_MOTHER_BOTTLES')")
+    List<MediaComposition> all() { return repository.findAll(); }
+    @PostMapping @PreAuthorize("hasRole('ADMIN')") @ResponseStatus(HttpStatus.CREATED)
+    MediaComposition create(@Valid @RequestBody MediaComposition media) { return repository.save(media); }
     record StockRequest(@Min(0) int availableBottles) {}
-    @PatchMapping("/{id}/stock") MediaComposition stock(@PathVariable Long id, @Valid @RequestBody StockRequest input) {
+    @PatchMapping("/{id}/stock") @PreAuthorize("hasRole('ADMIN')") MediaComposition stock(@PathVariable Long id, @Valid @RequestBody StockRequest input) {
         var item = repository.findById(id).orElseThrow(() -> new IllegalArgumentException("Media composition not found"));
         item.setAvailableBottles(input.availableBottles()); return repository.save(item);
     }
-    @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) void delete(@PathVariable Long id) { repository.deleteById(id); }
+    @DeleteMapping("/{id}") @PreAuthorize("hasRole('ADMIN')") @ResponseStatus(HttpStatus.NO_CONTENT) void delete(@PathVariable Long id) { repository.deleteById(id); }
+}
+
+@RestController @RequestMapping("/api/media-preparations")
+@PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_MEDIA')")
+class MediaPreparationController {
+    private final MediaPreparationRepository repository; private final MediaCompositionRepository media;
+    MediaPreparationController(MediaPreparationRepository repository, MediaCompositionRepository media) { this.repository = repository; this.media = media; }
+    record PreparationRequest(@NotNull Long mediaId, @Min(1) int bottleCount) {}
+    @GetMapping List<MediaPreparation> all(Authentication auth) {
+        var all = repository.findAll();
+        if (auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) return all;
+        return all.stream().filter(item -> auth.getName().equals(item.getTechnician()))
+            .sorted(Comparator.comparing(MediaPreparation::getId).reversed()).limit(20).toList();
+    }
+    @PostMapping @ResponseStatus(HttpStatus.CREATED) @Transactional MediaPreparation create(@Valid @RequestBody PreparationRequest input, Authentication auth) {
+        var composition = media.findById(input.mediaId()).orElseThrow(() -> new IllegalArgumentException("Media composition not found"));
+        composition.setAvailableBottles(Math.addExact(composition.getAvailableBottles(), input.bottleCount()));
+        media.save(composition);
+        var preparation = new MediaPreparation(); preparation.setMedia(composition);
+        preparation.setBottleCount(input.bottleCount()); preparation.setTechnician(auth.getName());
+        return repository.save(preparation);
+    }
 }
 
 @RestController @RequestMapping("/api/mother-bottles")

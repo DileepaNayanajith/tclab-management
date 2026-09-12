@@ -64,7 +64,10 @@ public class WorkflowController {
             mother.getCycle() + 1, mother.getCultureWeek(), currentYear, currentWeek, mother.getTechnician(), mother.getStatus().name());
     }
     @GetMapping("/dashboard") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DASHBOARD')") Map<String,Long> dashboard() {
-        return Map.of("plants", plants.count(), "activeMothers", mothers.countByStatus(BottleStatus.ACTIVE), "activeSubcultures", subcultures.countByStatus(BottleStatus.ACTIVE), "discards", discards.count());
+        long availableMediaBottles = media.findAll().stream().mapToLong(MediaComposition::getAvailableBottles).sum();
+        return Map.of("plants", plants.count(), "activeMothers", mothers.countByStatus(BottleStatus.ACTIVE),
+            "activeSubcultures", subcultures.countByStatus(BottleStatus.ACTIVE), "availableMediaBottles", availableMediaBottles,
+            "discards", discards.count());
     }
 
     public record AvailablePlant(String plantCode, String plantName, int multiply, int rooting, int total) {}
