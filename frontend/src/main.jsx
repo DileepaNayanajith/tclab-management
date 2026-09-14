@@ -20,7 +20,9 @@ import "./styles.css";
 import "./staff.css";
 import "./dashboard.css";
 
-const api = axios.create({ baseURL: "/api" });
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "/api",
+});
 const nav = [
   ["Dashboard", LayoutDashboard],
   ["Analytics", BarChart3],
