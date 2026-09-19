@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: natural-foliage-lab
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: fullstack-rebuild
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:MaxRAMPercentage=65 -XX:InitialRAMPercentage=20 -XX:+UseSerialGC
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
