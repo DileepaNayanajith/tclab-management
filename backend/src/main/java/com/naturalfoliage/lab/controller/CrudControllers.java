@@ -143,18 +143,25 @@ class SubcultureController {
         scannedSubculture.ifPresent(item -> item.setStatus(BottleStatus.USED));
         if (scannedSubculture.isEmpty()) parent.setStatus(BottleStatus.USED);
         var created = new java.util.ArrayList<Subculture>();
+        var barcodePrefix = barcodePrefix(parent.getPlant().getCode(), cycle, week);
+        int sequence = nextSequence(barcodePrefix);
         for (var line : input.lines()) for (int bottle = 0; bottle < line.bottleCount(); bottle++) {
-            var culture = new Subculture(); culture.setBarcode(nextBarcode(parent.getPlant().getCode(), cycle, week)); culture.setParent(parent);
+            var culture = new Subculture(); culture.setBarcode("%s-%03d".formatted(barcodePrefix, sequence++)); culture.setParent(parent);
             culture.setMedia(selectedMedia); culture.setPlantCount(line.plantsPerBottle()); culture.setCycle(cycle); culture.setSubcultureWeek(week);
             culture.setRooting("ROOTING".equals(line.cultureType())); culture.setLaminaFlow(input.laminaFlow().trim()); culture.setOrigin("Subculture"); culture.setTechnician(technician);
             created.add(repository.save(culture));
         }
+        repository.flush();
         return created;
     }
 
-    private String nextBarcode(String plantCode, int cycle, int week) {
-        var prefix = "%s-%02d%02d-C%d".formatted(plantCode.toUpperCase(), LocalDate.now().getYear() % 100, week, cycle);
-        int sequence = 1; while (repository.findByBarcode("%s-%03d".formatted(prefix, sequence)).isPresent()) sequence++;
-        return "%s-%03d".formatted(prefix, sequence);
+    private String barcodePrefix(String plantCode, int cycle, int week) {
+        return "%s-%02d%02d-C%d".formatted(plantCode.toUpperCase(), LocalDate.now().getYear() % 100, week, cycle);
+    }
+
+    private int nextSequence(String prefix) {
+        int sequence = 1;
+        while (repository.findByBarcode("%s-%03d".formatted(prefix, sequence)).isPresent()) sequence++;
+        return sequence;
     }
 }
