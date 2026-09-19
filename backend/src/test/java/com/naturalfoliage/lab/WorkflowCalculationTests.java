@@ -78,7 +78,7 @@ class WorkflowCalculationTests {
         mvc.perform(post("/api/discards").with(httpBasic("admin", "ChangeMe123!"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"barcode":"%s","reason":"Contamination"}
+                    {"barcode":"%s","reason":"Bacterial"}
                     """.formatted(discardBarcode)))
             .andExpect(status().isOk());
         assertThat(subcultures.findByBarcode(discardBarcode).orElseThrow().getStatus()).isEqualTo(BottleStatus.DISCARDED);
