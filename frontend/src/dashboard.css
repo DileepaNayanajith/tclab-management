@@ -38,15 +38,19 @@
 .overdue-barcode-list code { padding: 6px 8px; border: 1px solid #f0c9c1; border-radius: 6px; background: white; color: #7f3024; font-size: 12px; font-weight: 700; }
 .analytics-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 240px)); gap: 18px; margin: 28px 0 0; }
 .analytics-panel { display: grid; gap: 26px; }
-.chart-controls { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 16px; padding-bottom: 22px; border-bottom: 1px solid #e5ede9; }
+.chart-controls { display: grid; grid-template-columns: repeat(4, minmax(170px, 1fr)); gap: 16px; padding-bottom: 22px; border-bottom: 1px solid #e5ede9; }
 .chart-title { display: flex; justify-content: space-between; align-items: end; gap: 16px; }
+.chart-title > div:first-child { display: grid; gap: 5px; }
 .chart-title span { color: #71827a; font-size: 12px; font-weight: 700; }
-.auto-bar-chart { display: grid; gap: 14px; min-height: 220px; }
-.chart-row { display: grid; grid-template-columns: minmax(110px, 180px) 1fr 50px; align-items: center; gap: 14px; }
-.chart-row > span { overflow: hidden; color: #4f665b; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.chart-track { height: 28px; overflow: hidden; border-radius: 7px; background: #edf3f0; }
-.chart-track div { height: 100%; border-radius: 7px; background: linear-gradient(90deg, #277657, #79ba9d); transition: width .25s ease; }
-.chart-row > b { color: #173e2e; font: 800 14px Manrope; }
+.chart-downloads { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.analytics-chart-scroll { width: 100%; min-height: 360px; overflow-x: auto; border: 1px solid #e7eeea; border-radius: 12px; background: #fff; }
+.analytics-chart { display: block; max-width: none; }
+.trend-summary { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; background: #eef4f1; color: #52675e; font-size: 12px; }
+.trend-summary b { padding: 5px 8px; border-radius: 999px; background: #dfeae5; color: #345849; white-space: nowrap; }
+.trend-summary.up { background: #fff4ed; }
+.trend-summary.up b { background: #ffe2d2; color: #a34822; }
+.trend-summary.down { background: #edf8f2; }
+.trend-summary.down b { background: #d9f0e3; color: #246848; }
 
 @media (max-width: 1180px) {
   .dashboard-tables { grid-template-columns: 1fr; }
@@ -54,6 +58,7 @@
 
 @media (max-width: 900px) {
   .dashboard-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chart-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
@@ -63,5 +68,7 @@
   .dashboard-table .table-heading { padding: 20px 18px 14px; }
   .dashboard-table .table-heading h2 { font-size: 18px; }
   .analytics-summary, .chart-controls { grid-template-columns: 1fr; }
-  .chart-row { grid-template-columns: 90px 1fr 35px; }
+  .chart-title { align-items: flex-start; flex-direction: column; }
+  .chart-downloads { justify-content: flex-start; }
+  .trend-summary { align-items: flex-start; flex-direction: column; }
 }

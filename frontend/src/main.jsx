@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import axios from "axios";
 import Barcode from "react-barcode";
@@ -263,12 +263,58 @@ function OperationalTables({ details }) {
   );
 }
 
+function AnalyticsChart({ data, type, metricLabel, chartRef }) {
+  if (!data.length) return <div className="empty">No matching discard data yet.</div>;
+  const width = Math.max(720, data.length * 92);
+  const height = 360;
+  const margin = { top: 28, right: 24, bottom: 82, left: 58 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const maximum = Math.max(1, ...data.map((item) => item.value));
+  const y = (value) => margin.top + plotHeight - (value / maximum) * plotHeight;
+  const x = (index) =>
+    data.length === 1
+      ? margin.left + plotWidth / 2
+      : margin.left + (index / (data.length - 1)) * plotWidth;
+  const linePoints = data.map((item, index) => `${x(index)},${y(item.value)}`).join(" ");
+  const ticks = [...new Set([0, 1, 2, 3, 4].map((step) => Math.round((maximum * step) / 4)))];
+  const slotWidth = plotWidth / data.length;
+  const barWidth = Math.min(48, slotWidth * 0.62);
+  return (
+    <div className="analytics-chart-scroll">
+      <svg ref={chartRef} className="analytics-chart" viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="img" aria-label={`${type} chart of ${metricLabel}`} xmlns="http://www.w3.org/2000/svg">
+        <rect width={width} height={height} fill="#ffffff" />
+        <text x={margin.left} y="16" fill="#496158" fontSize="11" fontWeight="700">{metricLabel}</text>
+        {ticks.map((tick) => {
+          const tickY = y(tick);
+          return <g key={tick}><line x1={margin.left} x2={width - margin.right} y1={tickY} y2={tickY} stroke="#e6eeea" /><text x={margin.left - 10} y={tickY + 4} textAnchor="end" fill="#708079" fontSize="10">{tick}</text></g>;
+        })}
+        {type === "line" ? <>
+          <polygon points={`${margin.left},${margin.top + plotHeight} ${linePoints} ${x(data.length - 1)},${margin.top + plotHeight}`} fill="#64aa8a22" />
+          {data.length > 1 && <polyline points={linePoints} fill="none" stroke="#277657" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />}
+          {data.map((item, index) => <g key={item.label}><circle cx={x(index)} cy={y(item.value)} r="5" fill="#277657" stroke="#fff" strokeWidth="2" /><text x={x(index)} y={y(item.value) - 10} textAnchor="middle" fill="#214f3b" fontSize="10" fontWeight="700">{item.value}</text></g>)}
+        </> : data.map((item, index) => {
+          const barX = margin.left + slotWidth * index + (slotWidth - barWidth) / 2;
+          const barY = y(item.value);
+          return <g key={item.label}><rect x={barX} y={barY} width={barWidth} height={margin.top + plotHeight - barY} rx="5" fill="#3a8b69" /><text x={barX + barWidth / 2} y={barY - 8} textAnchor="middle" fill="#214f3b" fontSize="10" fontWeight="700">{item.value}</text></g>;
+        })}
+        {data.map((item, index) => {
+          const labelX = type === "bar" ? margin.left + slotWidth * index + slotWidth / 2 : x(index);
+          return <text key={item.label} x={labelX} y={height - margin.bottom + 22} transform={`rotate(-35 ${labelX} ${height - margin.bottom + 22})`} textAnchor="end" fill="#5c7067" fontSize="10">{item.label}</text>;
+        })}
+      </svg>
+    </div>
+  );
+}
+
 function AnalyticsPage() {
   const [records, setRecords] = useState([]),
     [xAxis, setXAxis] = useState("month"),
     [yAxis, setYAxis] = useState("plants"),
     [reasonFilter, setReasonFilter] = useState("All"),
+    [chartType, setChartType] = useState("auto"),
     [error, setError] = useState("");
+  const chartRef = useRef(null);
 
   useEffect(() => {
     api
@@ -282,7 +328,7 @@ function AnalyticsPage() {
   const filtered = records.filter(
     (item) =>
       reasonFilter === "All" ||
-      item.reason.toLowerCase().includes(reasonFilter.toLowerCase()),
+      (item.reason || "").toLowerCase().includes(reasonFilter.toLowerCase()),
   );
   function dimensionValues(item) {
     const date = new Date(`${item.discardedDate}T00:00:00`);
@@ -294,10 +340,10 @@ function AnalyticsPage() {
       month: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
       plant: item.plantCode || "Unknown",
       cycle: `Cycle ${item.cycle}`,
-      week: `Week ${item.cultureWeek}`,
+      week: `${Number.isNaN(date.getFullYear()) ? "Unknown" : date.getFullYear()}-W${String(item.cultureWeek || 0).padStart(2, "0")}`,
     };
     if (xAxis === "reason") {
-      return item.reason.split(",").map((reason) => reason.trim()).filter(Boolean);
+      return (item.reason || "Unknown").split(",").map((reason) => reason.trim()).filter(Boolean);
     }
     return [dimensions[xAxis]];
   }
@@ -315,11 +361,49 @@ function AnalyticsPage() {
         ? a.label.localeCompare(b.label, undefined, { numeric: true })
         : b.value - a.value,
     );
-  const maximum = Math.max(1, ...chartData.map((item) => item.value));
   const totalPlants = filtered.reduce(
     (total, item) => total + Number(item.plantCount || 0),
     0,
   );
+  const temporalAxis = ["year", "month", "week"].includes(xAxis);
+  const effectiveChartType = chartType === "auto" ? (temporalAxis ? "line" : "bar") : chartType;
+  const metricLabel = yAxis === "plants" ? "Number of plants affected" : "Number of bottles discarded";
+  const trend = temporalAxis && chartData.length > 1
+    ? chartData.at(-1).value - chartData[0].value
+    : null;
+  const trendPercent = trend !== null && chartData[0].value > 0
+    ? Math.abs((trend / chartData[0].value) * 100).toFixed(1)
+    : null;
+  function safeFilename(value) {
+    return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+  function downloadChart() {
+    if (!chartRef.current) return;
+    const copy = chartRef.current.cloneNode(true);
+    copy.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const source = new XMLSerializer().serializeToString(copy);
+    const url = URL.createObjectURL(new Blob([source], { type: "image/svg+xml;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `discard-analysis-${safeFilename(xAxis)}.svg`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  function downloadCsv() {
+    const escape = (value) => `"${String(value).replaceAll('"', '""')}"`;
+    const rows = [["Category", metricLabel], ...chartData.map((item) => [item.label, item.value])];
+    const content = rows.map((row) => row.map(escape).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([content], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `discard-analysis-${safeFilename(xAxis)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
   return (
     <>
@@ -330,20 +414,21 @@ function AnalyticsPage() {
       </header>
       {error && <div className="error">{error}</div>}
       <section className="analytics-summary">
-        <article className="stat"><span>Filtered discard bottles</span><strong>{filtered.length}</strong></article>
-        <article className="stat discard"><span>Plants affected</span><strong>{totalPlants}</strong></article>
+        <article className="stat"><span>Discarded bottles</span><strong>{filtered.length}</strong></article>
+        <article className="stat discard"><span>Number of plants affected</span><strong>{totalPlants}</strong></article>
       </section>
       <section className="panel analytics-panel">
         <div className="chart-controls">
           <label>Reason filter<select value={reasonFilter} onChange={(event) => setReasonFilter(event.target.value)}><option>All</option><option>Bacterial</option><option>Fungal</option><option>Mites</option><option>Plant dead</option><option>Other</option></select></label>
           <label>X-axis<select value={xAxis} onChange={(event) => setXAxis(event.target.value)}><option value="month">Year / month</option><option value="year">Year</option><option value="laminaFlow">Lamina flow</option><option value="technician">Subculture technician</option><option value="discardedBy">Discarded by</option><option value="plant">Plant variety</option><option value="reason">Discard reason</option><option value="cycle">Culture cycle</option><option value="week">Culture week</option></select></label>
           <label>Y-axis<select value={yAxis} onChange={(event) => setYAxis(event.target.value)}><option value="plants">Number of plants affected</option><option value="bottles">Number of bottles discarded</option></select></label>
+          <label>Chart type<select value={chartType} onChange={(event) => setChartType(event.target.value)}><option value="auto">Automatic (recommended)</option><option value="line">Line chart</option><option value="bar">Bar chart</option></select></label>
         </div>
-        <div className="chart-title"><h2>{reasonFilter} by {xAxis === "laminaFlow" ? "lamina flow" : xAxis}</h2><span>{yAxis === "plants" ? "Plants affected" : "Bottles discarded"}</span></div>
-        <div className="auto-bar-chart">
-          {chartData.map((item) => <div className="chart-row" key={item.label}><span title={item.label}>{item.label}</span><div className="chart-track"><div style={{width: `${Math.max(3, (item.value / maximum) * 100)}%`}}></div></div><b>{item.value}</b></div>)}
-          {!chartData.length && <div className="empty">No matching discard data yet.</div>}
+        <div className="chart-title"><div><h2>{reasonFilter} discards by {xAxis === "laminaFlow" ? "lamina flow" : xAxis}</h2><span>{metricLabel}</span></div><div className="chart-downloads"><button type="button" className="secondary compact" onClick={downloadCsv} disabled={!chartData.length}>Download data (CSV)</button><button type="button" onClick={downloadChart} disabled={!chartData.length}>Download chart (SVG)</button></div></div>
+        <div className={`trend-summary ${trend > 0 ? "up" : trend < 0 ? "down" : "stable"}`}>
+          {temporalAxis ? chartData.length > 1 ? <><b>{trend > 0 ? "Increasing" : trend < 0 ? "Decreasing" : "Stable"}</b><span>{trend === 0 ? `Latest period is the same as the first period (${chartData.at(-1).value}).` : `Latest period is ${Math.abs(trend)} ${metricLabel.toLowerCase()} ${trend > 0 ? "higher" : "lower"} than the first period${trendPercent ? ` (${trendPercent}%)` : ""}.`}</span></> : <span>Add data from at least two periods to calculate an increase/decrease trend.</span> : chartData.length ? <><b>Highest category</b><span>{chartData[0].label}: {chartData[0].value} {metricLabel.toLowerCase()}</span></> : <span>No matching data to analyse.</span>}
         </div>
+        <AnalyticsChart data={chartData} type={effectiveChartType} metricLabel={metricLabel} chartRef={chartRef} />
       </section>
     </>
   );
