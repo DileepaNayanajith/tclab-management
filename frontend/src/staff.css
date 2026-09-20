@@ -508,6 +508,7 @@ select {
   border-bottom: 1px solid #e7eeea;
 }
 .initiation-print-toolbar p { margin: 3px 0 0; color: #60746a; font-size: 11px; }
+.initiation-label-library { display: none; }
 .initiation-print-label {
   width: 30mm;
   height: 10mm;

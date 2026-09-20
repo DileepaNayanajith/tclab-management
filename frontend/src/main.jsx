@@ -1270,7 +1270,7 @@ function BottleBarcodeLabel({ item }) {
 
 function InitiationBarcodeLabel({ item }) {
   return (
-    <div className="print-label initiation-print-label">
+    <div className="print-label initiation-print-label" data-initiation-label-id={item.id}>
       <Barcode
         value={item.barcode}
         format="CODE128"
@@ -2010,13 +2010,35 @@ function WorkflowPage({ type, user }) {
       selected.includes(id) ? selected.filter((itemId) => itemId !== id) : [...selected, id],
     );
   }
+  function printInitiationLabels(ids) {
+    const labels = ids
+      .map((id) => document.querySelector(`[data-initiation-label-id="${id}"]`)?.outerHTML)
+      .filter(Boolean);
+    if (!labels.length) return;
+    const frame = document.createElement("iframe");
+    frame.setAttribute("title", "Plant initiation barcode labels");
+    frame.style.cssText = "position:fixed;width:0;height:0;border:0;right:0;bottom:0";
+    document.body.appendChild(frame);
+    const printDocument = frame.contentDocument;
+    printDocument.open();
+    printDocument.write(`<!doctype html><html><head><title></title><style>
+      @page { size: 30mm 10mm; margin: 0; }
+      html, body { width: 30mm; margin: 0; padding: 0; background: #fff; }
+      * { box-sizing: border-box; }
+      .initiation-print-label { width: 30mm; height: 10mm; padding: .35mm .6mm; overflow: hidden; text-align: center; break-inside: avoid; page-break-inside: avoid; page-break-after: always; }
+      .initiation-print-label:last-child { page-break-after: auto; }
+      .initiation-print-label svg { display: block; width: 28.8mm; max-width: 28.8mm; height: 6.2mm; margin: 0 auto; }
+      .initiation-print-label strong { display: block; overflow: hidden; margin: .2mm 0 0; font: 700 5pt/1 monospace; letter-spacing: -.15pt; white-space: nowrap; }
+    </style></head><body>${labels.join("")}</body></html>`);
+    printDocument.close();
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+    setTimeout(() => frame.remove(), 1500);
+  }
   function printInitiation(id) {
     setSelectedForPrint([id]);
-    setTimeout(() => window.print(), 0);
+    printInitiationLabels([id]);
   }
-  const initiationPrintRows = type === "Plant Initiation"
-    ? rows.filter((item) => selectedForPrint.includes(item.id))
-    : [];
   const select = (key, label, items) => (
     <label>
       {label}
@@ -2185,7 +2207,7 @@ function WorkflowPage({ type, user }) {
                 <b>30 mm × 10 mm barcode labels</b>
                 <p>Select past initiations or print one label directly.</p>
               </div>
-              <button type="button" disabled={!selectedForPrint.length} onClick={() => window.print()}>
+              <button type="button" disabled={!selectedForPrint.length} onClick={() => printInitiationLabels(selectedForPrint)}>
                 Print selected ({selectedForPrint.length})
               </button>
             </div>
@@ -2245,9 +2267,9 @@ function WorkflowPage({ type, user }) {
               )}
             </tbody>
           </table>
-          {type === "Plant Initiation" && selectedForPrint.length > 0 && (
-            <div className="barcode-sheet initiation-barcode-sheet">
-              {initiationPrintRows.map((item) => <InitiationBarcodeLabel item={item} key={item.id} />)}
+          {type === "Plant Initiation" && (
+            <div className="initiation-label-library" aria-hidden="true">
+              {rows.map((item) => <InitiationBarcodeLabel item={item} key={item.id} />)}
             </div>
           )}
         </section>
