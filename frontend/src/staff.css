@@ -367,6 +367,7 @@ select {
   background: #fff0ee;
   color: #a23e34;
 }
+.authority-note { display: block; padding: 9px 11px; border-radius: 8px; background: #fff5e8; color: #8a5a1d; font-size: 11px; font-weight: 700; }
 .pos-panel { display: grid; gap: 22px; }
 .pos-customer { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .plant-search { position: relative; }

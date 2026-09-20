@@ -980,6 +980,10 @@ function MediaBottlesPage({ user }) {
     [rows, setRows] = useState([]),
     [mediaId, setMediaId] = useState(""),
     [bottleCount, setBottleCount] = useState(""),
+    [ph, setPh] = useState(""),
+    [agar, setAgar] = useState(""),
+    [sterilizationMethod, setSterilizationMethod] = useState("AUTOCLAVE"),
+    [editingId, setEditingId] = useState(null),
     [error, setError] = useState("");
   async function load() {
     setError("");
@@ -1055,10 +1059,9 @@ function MediaBottlesPage({ user }) {
     try {
       const amount = Number(bottleCount);
       try {
-        await api.post("/media-preparations", {
-          mediaId,
-          bottleCount: amount,
-        });
+        const preparation = { bottleCount: amount, ph: Number(ph), agar: Number(agar), sterilizationMethod };
+        if (editingId) await api.put(`/media-preparations/${editingId}`, preparation);
+        else await api.post("/media-preparations", { mediaId, ...preparation });
       } catch (requestError) {
         if (requestError.response?.status !== 404 && requestError.response?.status !== 405) {
           throw requestError;
@@ -1066,6 +1069,7 @@ function MediaBottlesPage({ user }) {
 
         // Compatibility for an already-running backend from before preparation
         // history was introduced. It still updates the composition's stock.
+        if (editingId) throw requestError;
         const composition = compositions.find(
           (item) => String(item.id) === String(mediaId),
         );
@@ -1088,6 +1092,9 @@ function MediaBottlesPage({ user }) {
               preparedAt: new Date().toISOString(),
               media: updatedComposition,
               bottleCount: amount,
+              ph: Number(ph),
+              agar: Number(agar),
+              sterilizationMethod,
               technician: user.username,
             },
             ...savedRows,
@@ -1095,6 +1102,8 @@ function MediaBottlesPage({ user }) {
         );
       }
       setBottleCount("");
+      setPh(""); setAgar(""); setSterilizationMethod("AUTOCLAVE");
+      setMediaId(""); setEditingId(null);
       await load();
     } catch (e) {
       setError(
@@ -1105,6 +1114,23 @@ function MediaBottlesPage({ user }) {
   const selected = compositions.find(
     (item) => String(item.id) === String(mediaId),
   );
+  function selectComposition(value) {
+    setMediaId(value);
+    const composition = compositions.find((item) => String(item.id) === String(value));
+    setPh(composition?.ph ?? "");
+    setAgar(composition?.agar ?? "");
+  }
+  function editPreparation(item) {
+    setEditingId(item.id); setMediaId(String(item.media.id));
+    setBottleCount(String(item.bottleCount));
+    setPh(item.ph ?? item.media.ph ?? ""); setAgar(item.agar ?? item.media.agar ?? "");
+    setSterilizationMethod(item.sterilizationMethod || "AUTOCLAVE"); setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function cancelEdit() {
+    setEditingId(null); setMediaId(""); setBottleCount(""); setPh(""); setAgar("");
+    setSterilizationMethod("AUTOCLAVE"); setError("");
+  }
   return (
     <>
       <header>
@@ -1117,13 +1143,14 @@ function MediaBottlesPage({ user }) {
       </header>
       <section className="split workflow-layout">
         <form className="panel form" onSubmit={save}>
-          <h2>New preparation</h2>
+          <h2>{editingId ? "Edit media preparation" : "New preparation"}</h2>
           {error && <div className="error">{error}</div>}
           <label>
             Media composition
             <select
               value={mediaId}
-              onChange={(e) => setMediaId(e.target.value)}
+              onChange={(e) => selectComposition(e.target.value)}
+              disabled={Boolean(editingId)}
               required
             >
               <option value="">Select composition…</option>
@@ -1140,16 +1167,31 @@ function MediaBottlesPage({ user }) {
             </div>
           )}
           <label>
+            Batch pH
+            <input type="number" min="0" step="0.01" value={ph} onChange={(e) => setPh(e.target.value)} required />
+          </label>
+          <label>
+            Batch agar (g/L)
+            <input type="number" min="0" step="0.01" value={agar} onChange={(e) => setAgar(e.target.value)} required />
+          </label>
+          <label>
+            Sterilization method
+            <select value={sterilizationMethod} onChange={(e) => setSterilizationMethod(e.target.value)} required><option value="AUTOCLAVE">Autoclave</option><option value="CSUP">CSUP</option></select>
+          </label>
+          <label>
             Number of prepared bottles
             <input
               type="number"
               min="1"
               value={bottleCount}
               onChange={(e) => setBottleCount(e.target.value)}
+              disabled={Boolean(editingId) && user.role !== "ADMIN"}
               required
             />
           </label>
-          <button>Add bottles to inventory</button>
+          {editingId && user.role !== "ADMIN" && <small className="authority-note">Only an administrator can change the bottle quantity of a past preparation.</small>}
+          <button>{editingId ? "Update preparation" : "Add bottles to inventory"}</button>
+          {editingId && <button type="button" className="secondary" onClick={cancelEdit}>Cancel editing</button>}
         </form>
         <section className="panel table-wrap">
           <table>
@@ -1158,8 +1200,11 @@ function MediaBottlesPage({ user }) {
                 <th>Date / time</th>
                 <th>Media</th>
                 <th>Bottles added</th>
+                <th>pH / agar</th>
+                <th>Sterilization</th>
                 {user.role === "ADMIN" && <th>Prepared by</th>}
                 <th>Current stock</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -1175,13 +1220,16 @@ function MediaBottlesPage({ user }) {
                     <small className="cell-sub">{item.media.basalMedia}</small>
                   </td>
                   <td>+{item.bottleCount}</td>
+                  <td>{item.ph ?? item.media.ph ?? "—"} / {item.agar ?? item.media.agar ?? "—"} g/L</td>
+                  <td>{item.sterilizationMethod === "CSUP" ? "CSUP" : "Autoclave"}</td>
                   {user.role === "ADMIN" && <td>{item.technician}</td>}
                   <td>{item.media.availableBottles}</td>
+                  <td>{!String(item.id).startsWith("legacy-") && !String(item.id).startsWith("existing-stock-") ? <button type="button" className="secondary compact" onClick={() => editPreparation(item)}><Pencil size={14} /> Edit</button> : "—"}</td>
                 </tr>
               ))}
               {!rows.length && (
                 <tr>
-                  <td colSpan={user.role === "ADMIN" ? 5 : 4} className="empty">
+                  <td colSpan={user.role === "ADMIN" ? 8 : 7} className="empty">
                     No media preparations yet.
                   </td>
                 </tr>

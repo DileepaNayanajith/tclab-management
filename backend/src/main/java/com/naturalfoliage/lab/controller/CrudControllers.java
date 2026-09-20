@@ -37,10 +37,10 @@ class MediaController {
     MediaController(MediaCompositionRepository repository) { this.repository = repository; }
     @GetMapping @PreAuthorize("hasRole('ADMIN')")
     List<MediaComposition> all() { return repository.findAll(); }
-    record MediaLookup(Long id, String code, String basalMedia, int availableBottles) {}
+    record MediaLookup(Long id, String code, String basalMedia, Double ph, Double agar, int availableBottles) {}
     @GetMapping("/options") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_MEDIA')")
     List<MediaLookup> options() { return repository.findAll().stream()
-        .map(item -> new MediaLookup(item.getId(), item.getCode(), item.getBasalMedia(), item.getAvailableBottles())).toList(); }
+        .map(item -> new MediaLookup(item.getId(), item.getCode(), item.getBasalMedia(), item.getPh(), item.getAgar(), item.getAvailableBottles())).toList(); }
     @PostMapping @PreAuthorize("hasRole('ADMIN')") @ResponseStatus(HttpStatus.CREATED)
     MediaComposition create(@Valid @RequestBody MediaComposition media) { return repository.save(media); }
     @PutMapping("/{id}") @PreAuthorize("hasRole('ADMIN')")
@@ -67,7 +67,12 @@ class MediaController {
 class MediaPreparationController {
     private final MediaPreparationRepository repository; private final MediaCompositionRepository media;
     MediaPreparationController(MediaPreparationRepository repository, MediaCompositionRepository media) { this.repository = repository; this.media = media; }
-    record PreparationRequest(@NotNull Long mediaId, @Min(1) int bottleCount) {}
+    record PreparationRequest(@NotNull Long mediaId, @Min(1) int bottleCount,
+        @DecimalMin("0.0") Double ph, @DecimalMin("0.0") Double agar,
+        @Pattern(regexp = "AUTOCLAVE|CSUP") String sterilizationMethod) {}
+    record PreparationUpdateRequest(@Min(1) int bottleCount,
+        @DecimalMin("0.0") Double ph, @DecimalMin("0.0") Double agar,
+        @Pattern(regexp = "AUTOCLAVE|CSUP") String sterilizationMethod) {}
     @GetMapping List<MediaPreparation> all(Authentication auth) {
         var all = repository.findAll();
         if (auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) return all;
@@ -79,7 +84,31 @@ class MediaPreparationController {
         composition.setAvailableBottles(Math.addExact(composition.getAvailableBottles(), input.bottleCount()));
         media.save(composition);
         var preparation = new MediaPreparation(); preparation.setMedia(composition);
-        preparation.setBottleCount(input.bottleCount()); preparation.setTechnician(auth.getName());
+        preparation.setBottleCount(input.bottleCount());
+        preparation.setPh(input.ph() == null ? composition.getPh() : input.ph());
+        preparation.setAgar(input.agar() == null ? composition.getAgar() : input.agar());
+        preparation.setSterilizationMethod(input.sterilizationMethod() == null ? "AUTOCLAVE" : input.sterilizationMethod());
+        preparation.setTechnician(auth.getName());
+        return repository.save(preparation);
+    }
+    @PutMapping("/{id}") @Transactional
+    MediaPreparation update(@PathVariable Long id, @Valid @RequestBody PreparationUpdateRequest input, Authentication auth) {
+        var preparation = repository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Media preparation was not found"));
+        boolean admin = auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (!admin && !auth.getName().equals(preparation.getTechnician()))
+            throw new IllegalStateException("You can edit only your own media preparations");
+        if (!admin && input.bottleCount() != preparation.getBottleCount())
+            throw new IllegalStateException("Administrator authority is required to change a past bottle quantity");
+        if (admin && input.bottleCount() != preparation.getBottleCount()) {
+            var composition = preparation.getMedia();
+            int adjustedStock = composition.getAvailableBottles() + input.bottleCount() - preparation.getBottleCount();
+            if (adjustedStock < 0) throw new IllegalStateException("Bottle quantity cannot be reduced below stock already used");
+            composition.setAvailableBottles(adjustedStock); media.save(composition);
+            preparation.setBottleCount(input.bottleCount());
+        }
+        preparation.setPh(input.ph()); preparation.setAgar(input.agar());
+        preparation.setSterilizationMethod(input.sterilizationMethod() == null ? "AUTOCLAVE" : input.sterilizationMethod());
         return repository.save(preparation);
     }
 }
