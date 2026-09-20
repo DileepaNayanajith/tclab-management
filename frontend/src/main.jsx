@@ -156,14 +156,15 @@ function LaminaFlowSetup({ user, onSelect }) {
   );
 }
 
-function OperationalTables() {
-  const [details, setDetails] = useState({
-    availablePlants: [],
-    oldCultures: [],
-  });
-  useEffect(() => {
-    api.get("/dashboard/details").then((r) => setDetails(r.data));
-  }, []);
+function OperationalTables({ details }) {
+  const [expandedOldGroups, setExpandedOldGroups] = useState([]);
+  function toggleOldGroup(groupKey) {
+    setExpandedOldGroups((current) =>
+      current.includes(groupKey)
+        ? current.filter((key) => key !== groupKey)
+        : [...current, groupKey],
+    );
+  }
   return (
     <section className="dashboard-tables">
       <article className="panel table-wrap dashboard-table">
@@ -176,7 +177,7 @@ function OperationalTables() {
             {details.availablePlants.length} varieties
           </span>
         </div>
-        <table>
+        <div className="dashboard-table-scroll"><table>
           <thead>
             <tr>
               <th>Plant code</th>
@@ -208,7 +209,7 @@ function OperationalTables() {
               </tr>
             )}
           </tbody>
-        </table>
+        </table></div>
       </article>
       <article className="panel table-wrap dashboard-table warning-table">
         <div className="table-heading">
@@ -220,7 +221,7 @@ function OperationalTables() {
             {details.oldCultures.length} groups
           </span>
         </div>
-        <table>
+        <div className="dashboard-table-scroll"><table>
           <thead>
             <tr>
               <th>Week</th>
@@ -232,20 +233,22 @@ function OperationalTables() {
             </tr>
           </thead>
           <tbody>
-            {details.oldCultures.map((row, index) => (
-              <tr key={`${row.plantCode}-${row.subcultureWeek}-${index}`}>
+            {details.oldCultures.map((row, index) => {
+              const groupKey = `${row.plantCode}-${row.subcultureWeek}-${row.ageWeeks}-${index}`;
+              const expanded = expandedOldGroups.includes(groupKey);
+              return <React.Fragment key={groupKey}><tr>
                 <td>{row.subcultureWeek || "—"}</td>
                 <td>
                   <b>{row.plantCode}</b>
                 </td>
                 <td>{row.variety}</td>
-                <td>{row.bottles}</td>
+                <td><button type="button" className="bottle-count-button" onClick={() => toggleOldGroup(groupKey)} aria-expanded={expanded}>{row.bottles} {expanded ? "Hide" : "View"}</button></td>
                 <td>{row.totalPlants}</td>
                 <td>
                   <span className="age-alert">{row.ageWeeks} weeks</span>
                 </td>
-              </tr>
-            ))}
+              </tr>{expanded && <tr className="barcode-detail-row"><td colSpan="6"><b>Bottles to subculture</b><div className="overdue-barcode-list">{(row.barcodes || []).map((barcode) => <code key={barcode}>{barcode}</code>)}</div></td></tr>}</React.Fragment>;
+            })}
             {!details.oldCultures.length && (
               <tr>
                 <td colSpan="6" className="empty healthy">
@@ -254,7 +257,7 @@ function OperationalTables() {
               </tr>
             )}
           </tbody>
-        </table>
+        </table></div>
       </article>
     </section>
   );
@@ -347,12 +350,13 @@ function AnalyticsPage() {
 }
 
 function Dashboard({ user }) {
-  const [d, setD] = useState({}),
+  const [details, setDetails] = useState({ availablePlants: [], oldCultures: [] }),
     [mediaStock, setMediaStock] = useState([]),
-    [rootedStock, setRootedStock] = useState([]),
-    [mediaExpanded, setMediaExpanded] = useState(false);
+    [mediaExpanded, setMediaExpanded] = useState(false),
+    [rootedExpanded, setRootedExpanded] = useState(false),
+    [now, setNow] = useState(new Date());
   useEffect(() => {
-    api.get("/dashboard").then((r) => setD(r.data));
+    api.get("/dashboard/details").then((response) => setDetails(response.data));
     async function loadMediaStock() {
       try {
         let response;
@@ -373,74 +377,63 @@ function Dashboard({ user }) {
       }
     }
     loadMediaStock();
-    api
-      .get("/sales/inventory")
-      .then((response) => setRootedStock(response.data))
-      .catch(() =>
-        api.get("/dashboard/details").then((response) =>
-          setRootedStock(
-            response.data.availablePlants.map((item) => ({
-              plantCode: item.plantCode,
-              rootedQuantity: item.rooting,
-              sellableQuantity: Math.floor(item.rooting * 0.8),
-            })),
-          ),
-        ),
-      );
+    const clock = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(clock);
   }, []);
   const tech = user.role === "TECHNICIAN";
   const availableMediaBottles = mediaStock.reduce(
     (total, item) => total + Number(item.availableBottles || 0),
     0,
   );
+  const rootedStock = details.availablePlants.filter((item) => item.rooting > 0);
   const rootedTotal = rootedStock.reduce(
-    (total, item) => total + Number(item.rootedQuantity || 0),
+    (total, item) => total + Number(item.rooting || 0),
     0,
   );
   const sellableTotal = rootedStock.reduce(
-    (total, item) => total + Number(item.sellableQuantity || 0),
+    (total, item) => total + Math.floor(Number(item.rooting || 0) * 0.8),
+    0,
+  );
+  const totalActivePlants = details.availablePlants.reduce(
+    (total, item) => total + Number(item.total || 0),
     0,
   );
   const cards = [
-    ["Registered plants", d.plants, "plant"],
     ["Available media bottles", availableMediaBottles, "media"],
-    ["Active initiations", d.activeMothers, "mother"],
-    ["Active subcultures", d.activeSubcultures, "culture"],
     ["Rooted plants", rootedTotal, "rooted"],
-    ["Total discards", d.discards, "discard"],
+    ["Total active plants / clumps", totalActivePlants, "plants-total"],
   ];
   return (
     <>
-      <header>
-        <p className="eyebrow">{tech ? "MY WORKSPACE" : "OVERVIEW"}</p>
-        <h1>{tech ? "Technician dashboard" : "Laboratory dashboard"}</h1>
-        <p className="muted">
-          {tech
-            ? `${user.fullName} · ${user.employeeId} · ${user.labSection}`
-            : "A quick view of today’s tissue-culture inventory."}
-        </p>
+      <header className="dashboard-header">
+        <div><p className="eyebrow">{tech ? "MY WORKSPACE" : "OVERVIEW"}</p>
+          <h1>{tech ? "Technician dashboard" : "Laboratory dashboard"}</h1>
+          <p className="muted">{tech ? `${user.fullName} · ${user.employeeId} · ${user.labSection}` : "A quick view of today’s tissue-culture inventory."}</p>
+        </div>
+        <time dateTime={now.toISOString()}><small>LOCAL DATE & TIME</small><b>{new Intl.DateTimeFormat("en-LK", { dateStyle: "medium", timeStyle: "medium" }).format(now)}</b></time>
       </header>
-      <section className="cards">
+      <section className="cards dashboard-cards">
         {cards.map(([l, v, c]) => (
           <article
-            className={`stat ${c} ${c === "media" ? "expandable" : ""}`}
+            className={`stat ${c} ${c === "media" || c === "rooted" ? "expandable" : ""}`}
             key={l}
             onClick={
-              c === "media" ? () => setMediaExpanded((open) => !open) : undefined
+              c === "media" ? () => setMediaExpanded((open) => !open) : c === "rooted" ? () => setRootedExpanded((open) => !open) : undefined
             }
             onKeyDown={
-              c === "media"
+              c === "media" || c === "rooted"
                 ? (event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      setMediaExpanded((open) => !open);
+                      if (c === "media") setMediaExpanded((open) => !open);
+                      if (c === "rooted") setRootedExpanded((open) => !open);
                     }
                   }
                 : undefined
             }
-            role={c === "media" ? "button" : undefined}
-            tabIndex={c === "media" ? 0 : undefined}
-            aria-expanded={c === "media" ? mediaExpanded : undefined}
+            role={c === "media" || c === "rooted" ? "button" : undefined}
+            tabIndex={c === "media" || c === "rooted" ? 0 : undefined}
+            aria-expanded={c === "media" ? mediaExpanded : c === "rooted" ? rootedExpanded : undefined}
           >
             <span>{l}</span>
             <strong>{v ?? "—"}</strong>
@@ -451,7 +444,7 @@ function Dashboard({ user }) {
             )}
             {c === "rooted" && (
               <small className="sellable-summary">
-                Sellable 80%: <b>{sellableTotal}</b> plants
+                Sellable 80%: <b>{sellableTotal}</b> · {rootedExpanded ? "Hide details" : "View details"}
               </small>
             )}
             {c === "media" && mediaExpanded && mediaStock.length > 0 && (
@@ -463,6 +456,9 @@ function Dashboard({ user }) {
                   </div>
                 ))}
               </div>
+            )}
+            {c === "rooted" && rootedExpanded && rootedStock.length > 0 && (
+              <div className="media-stock-list rooted-stock-list">{rootedStock.map((item) => <div key={item.plantCode}><span><b>{item.plantCode}</b> · {item.plantName}</span><span>{item.rooting} rooted · {Math.floor(item.rooting * 0.8)} sellable</span></div>)}</div>
             )}
           </article>
         ))}
@@ -485,7 +481,7 @@ function Dashboard({ user }) {
           </div>
         </section>
       )}
-      <OperationalTables />
+      <OperationalTables details={details} />
     </>
   );
 }

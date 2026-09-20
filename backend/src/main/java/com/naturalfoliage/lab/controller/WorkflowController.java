@@ -77,7 +77,7 @@ public class WorkflowController {
 
     public record AvailablePlant(String plantCode, String plantName, int multiply, int rooting, int total) {}
     public record OldCulture(int subcultureWeek, String plantCode, String variety,
-        int bottles, int totalPlants, long ageWeeks) {}
+        int bottles, int totalPlants, long ageWeeks, List<String> barcodes) {}
     public record DashboardDetails(List<AvailablePlant> availablePlants, List<OldCulture> oldCultures) {}
 
     @GetMapping("/dashboard/details") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DASHBOARD')")
@@ -101,19 +101,19 @@ public class WorkflowController {
             .toList();
 
         record OldKey(int week, String code, String variety, long age) {}
-        var oldGroups = new LinkedHashMap<OldKey, int[]>();
+        var oldGroups = new LinkedHashMap<OldKey, List<Subculture>>();
         for (var culture : active) {
             long age = ChronoUnit.WEEKS.between(culture.getCreatedDate(), LocalDate.now());
             if (age <= 6) continue;
             var plant = culture.getParent().getPlant();
             var key = new OldKey(culture.getSubcultureWeek(), plant.getCode(), displayName(plant), age);
-            var totals = oldGroups.computeIfAbsent(key, ignored -> new int[2]);
-            totals[0] += 1;
-            totals[1] += culture.getPlantCount();
+            oldGroups.computeIfAbsent(key, ignored -> new ArrayList<>()).add(culture);
         }
         var oldCultures = oldGroups.entrySet().stream()
             .map(entry -> new OldCulture(entry.getKey().week(), entry.getKey().code(),
-                entry.getKey().variety(), entry.getValue()[0], entry.getValue()[1], entry.getKey().age()))
+                entry.getKey().variety(), entry.getValue().size(),
+                entry.getValue().stream().mapToInt(Subculture::getPlantCount).sum(), entry.getKey().age(),
+                entry.getValue().stream().map(Subculture::getBarcode).sorted().toList()))
             .sorted(Comparator.comparingLong(OldCulture::ageWeeks).reversed())
             .toList();
         return new DashboardDetails(available, oldCultures);
