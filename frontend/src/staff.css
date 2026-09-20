@@ -415,12 +415,22 @@ select {
   display: none;
 }
 .print-label {
-  width: 48mm;
-  min-height: 24mm;
-  padding: 3mm;
-  border: 1px solid #111;
+  box-sizing: border-box;
+  width: 50mm;
+  height: 25mm;
+  padding: 2mm 2.5mm;
+  overflow: hidden;
   text-align: center;
   break-inside: avoid;
+  page-break-inside: avoid;
+  page-break-after: always;
+}
+.print-label svg {
+  display: block;
+  width: auto;
+  max-width: 45mm;
+  height: 10mm;
+  margin: 0 auto;
 }
 .print-label strong,
 .print-label span {
@@ -428,11 +438,19 @@ select {
 }
 .print-label strong {
   font-family: monospace;
-  font-size: 11pt;
-  margin: 5mm 0 2mm;
+  font-size: 7.5pt;
+  line-height: 1.1;
+  margin: 0.8mm 0 0.6mm;
 }
 .print-label span {
-  font-size: 8pt;
+  font-size: 6.5pt;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.print-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 @media (max-width: 800px) {
   .scan-row,
@@ -444,6 +462,10 @@ select {
   .session-fields { grid-template-columns: 1fr; }
 }
 @media print {
+  @page barcode-label {
+    size: 50mm 25mm;
+    margin: 0;
+  }
   body * {
     visibility: hidden;
   }
@@ -452,10 +474,16 @@ select {
     visibility: visible;
   }
   .barcode-sheet {
-    display: grid;
-    grid-template-columns: repeat(3, 48mm);
-    gap: 3mm;
+    display: block;
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 50mm;
+    margin: 0;
+    padding: 0;
   }
+  .print-label {
+    page: barcode-label;
+  }
+  .print-label:last-child { page-break-after: auto; }
 }

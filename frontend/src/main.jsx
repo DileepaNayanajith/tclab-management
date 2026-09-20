@@ -1046,6 +1046,28 @@ function MediaBottlesPage({ user }) {
   );
 }
 
+function BottleBarcodeLabel({ item }) {
+  const year = item.createdDate
+    ? new Date(`${item.createdDate}T00:00:00`).getFullYear()
+    : new Date().getFullYear();
+  return (
+    <div className="print-label">
+      <Barcode
+        value={item.barcode}
+        format="CODE128"
+        width={0.9}
+        height={30}
+        margin={0}
+        displayValue={false}
+      />
+      <strong>{item.barcode}</strong>
+      <span>
+        {item.parent.plant.code} · {year}/W{String(item.subcultureWeek).padStart(2, "0")} · C{item.cycle} · {item.rooting ? "R" : "M"}
+      </span>
+    </div>
+  );
+}
+
 function SubculturePage({ user, sessionLaminaFlow }) {
   const blankLine = {
     bottleCount: 1,
@@ -1134,6 +1156,11 @@ function SubculturePage({ user, sessionLaminaFlow }) {
         ? current.filter((item) => item !== id)
         : [...current, id],
     );
+  }
+  function printOne(id) {
+    setCreated([]);
+    setSelectedForPrint([id]);
+    window.setTimeout(() => window.print(), 100);
   }
   return (
     <>
@@ -1301,19 +1328,13 @@ function SubculturePage({ user, sessionLaminaFlow }) {
             <button onClick={() => window.print()}>Print all barcodes</button>
             <div className="barcode-sheet">
               {printRows.map((item) => (
-                <div className="print-label" key={item.id}>
-                  <Barcode value={item.barcode} width={1.2} height={42} fontSize={10} margin={0}/>
-                  <span>
-                    {item.parent.plant.code} · Week {item.subcultureWeek} ·
-                    Cycle {item.cycle}
-                  </span>
-                </div>
+                <BottleBarcodeLabel item={item} key={item.id} />
               ))}
             </div>
           </div>
         )}
         {!created.length && selectedForPrint.length > 0 && (
-          <div className="barcode-sheet">{printRows.map((item) => <div className="print-label" key={item.id}><Barcode value={item.barcode} width={1.2} height={42} fontSize={10} margin={0}/><span>{item.parent.plant.code} · Week {item.subcultureWeek} · Cycle {item.cycle}</span></div>)}</div>
+          <div className="barcode-sheet">{printRows.map((item) => <BottleBarcodeLabel item={item} key={item.id} />)}</div>
         )}
       </section>
       <section className="panel table-wrap recent-subcultures">
@@ -1332,7 +1353,7 @@ function SubculturePage({ user, sessionLaminaFlow }) {
         </div>
         <table>
           <thead><tr><th>Print</th><th>Barcode</th><th>Plant</th><th>Cycle / week</th><th>Type</th>{admin && <><th>Technician</th><th>Lamina flow</th></>}<th>Status</th></tr></thead>
-          <tbody>{rows.map((item) => <tr key={item.id}><td><input type="checkbox" checked={selectedForPrint.includes(item.id)} onChange={() => togglePrint(item.id)}/></td><td><b>{item.barcode}</b></td><td>{item.parent.plant.name}</td><td>C{item.cycle} · W{item.subcultureWeek}</td><td>{item.rooting ? "Rooting" : "Multiply"}</td>{admin && <><td>{item.technician}</td><td>{item.laminaFlow || "—"}</td></>}<td><span className="badge">{item.status}</span></td></tr>)}</tbody>
+          <tbody>{rows.map((item) => <tr key={item.id}><td><div className="print-actions"><input type="checkbox" aria-label={`Select ${item.barcode} for printing`} checked={selectedForPrint.includes(item.id)} onChange={() => togglePrint(item.id)}/><button type="button" className="secondary compact" onClick={() => printOne(item.id)}>Print one</button></div></td><td><b>{item.barcode}</b></td><td>{item.parent.plant.name}</td><td>C{item.cycle} · W{item.subcultureWeek}</td><td>{item.rooting ? "Rooting" : "Multiply"}</td>{admin && <><td>{item.technician}</td><td>{item.laminaFlow || "—"}</td></>}<td><span className="badge">{item.status}</span></td></tr>)}</tbody>
         </table>
       </section>
     </>
