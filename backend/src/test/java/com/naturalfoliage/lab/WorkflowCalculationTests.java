@@ -52,7 +52,7 @@ class WorkflowCalculationTests {
         mvc.perform(post("/api/media-preparations").with(httpBasic("admin", "ChangeMe123!"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"mediaId":%d,"bottleCount":10}
+                    {"mediaId":%d,"bottleCount":10,"sterilizationMethod":"AUTOCLAVE"}
                     """.formatted(mediaId)))
             .andExpect(status().isCreated());
         assertThat(media.findById(mediaId).orElseThrow().getAvailableBottles()).isEqualTo(10);

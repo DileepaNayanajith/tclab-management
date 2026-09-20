@@ -37,9 +37,20 @@ select {
 .media-composition-list::-webkit-scrollbar-track { border-radius: 999px; background: #e7efeb; }
 .media-composition-form::-webkit-scrollbar-thumb,
 .media-composition-list::-webkit-scrollbar-thumb { border: 2px solid #e7efeb; border-radius: 999px; background: #5c8b74; }
+.media-preparation-form { align-self: start; height: 540px; overflow-y: scroll; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.media-preparation-list { align-self: start; height: 540px; overflow-x: auto; overflow-y: scroll; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.media-preparation-list thead th { position: sticky; z-index: 2; top: 0; background: #fff; box-shadow: 0 1px #e7eeea; }
+.media-preparation-form::-webkit-scrollbar,
+.media-preparation-list::-webkit-scrollbar { width: 10px; height: 10px; }
+.media-preparation-form::-webkit-scrollbar-track,
+.media-preparation-list::-webkit-scrollbar-track { border-radius: 999px; background: #e7efeb; }
+.media-preparation-form::-webkit-scrollbar-thumb,
+.media-preparation-list::-webkit-scrollbar-thumb { border: 2px solid #e7efeb; border-radius: 999px; background: #5c8b74; }
 @media (max-width: 800px) {
   .media-composition-form,
-  .media-composition-list { height: 55vh; min-height: 340px; }
+  .media-composition-list,
+  .media-preparation-form,
+  .media-preparation-list { height: 55vh; min-height: 340px; }
   .other-hormone-fields { grid-template-columns: 1fr; }
 }
 .compact {

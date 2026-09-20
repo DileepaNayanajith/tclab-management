@@ -982,7 +982,7 @@ function MediaBottlesPage({ user }) {
     [bottleCount, setBottleCount] = useState(""),
     [ph, setPh] = useState(""),
     [agar, setAgar] = useState(""),
-    [sterilizationMethod, setSterilizationMethod] = useState("AUTOCLAVE"),
+    [sterilizationMethod, setSterilizationMethod] = useState(""),
     [editingId, setEditingId] = useState(null),
     [error, setError] = useState("");
   async function load() {
@@ -1102,7 +1102,7 @@ function MediaBottlesPage({ user }) {
         );
       }
       setBottleCount("");
-      setPh(""); setAgar(""); setSterilizationMethod("AUTOCLAVE");
+      setPh(""); setAgar(""); setSterilizationMethod("");
       setMediaId(""); setEditingId(null);
       await load();
     } catch (e) {
@@ -1124,12 +1124,12 @@ function MediaBottlesPage({ user }) {
     setEditingId(item.id); setMediaId(String(item.media.id));
     setBottleCount(String(item.bottleCount));
     setPh(item.ph ?? item.media.ph ?? ""); setAgar(item.agar ?? item.media.agar ?? "");
-    setSterilizationMethod(item.sterilizationMethod || "AUTOCLAVE"); setError("");
+    setSterilizationMethod(item.sterilizationMethod || ""); setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function cancelEdit() {
     setEditingId(null); setMediaId(""); setBottleCount(""); setPh(""); setAgar("");
-    setSterilizationMethod("AUTOCLAVE"); setError("");
+    setSterilizationMethod(""); setError("");
   }
   return (
     <>
@@ -1142,7 +1142,7 @@ function MediaBottlesPage({ user }) {
         </p>
       </header>
       <section className="split workflow-layout">
-        <form className="panel form" onSubmit={save}>
+        <form className="panel form media-preparation-form" onSubmit={save}>
           <h2>{editingId ? "Edit media preparation" : "New preparation"}</h2>
           {error && <div className="error">{error}</div>}
           <label>
@@ -1176,7 +1176,11 @@ function MediaBottlesPage({ user }) {
           </label>
           <label>
             Sterilization method
-            <select value={sterilizationMethod} onChange={(e) => setSterilizationMethod(e.target.value)} required><option value="AUTOCLAVE">Autoclave</option><option value="CSUP">CSUP</option></select>
+            <select value={sterilizationMethod} onChange={(e) => setSterilizationMethod(e.target.value)} required>
+              <option value="" disabled>Select sterilization method...</option>
+              <option value="AUTOCLAVE">Autoclave</option>
+              <option value="CSUP">CSUP</option>
+            </select>
           </label>
           <label>
             Number of prepared bottles
@@ -1193,7 +1197,7 @@ function MediaBottlesPage({ user }) {
           <button>{editingId ? "Update preparation" : "Add bottles to inventory"}</button>
           {editingId && <button type="button" className="secondary" onClick={cancelEdit}>Cancel editing</button>}
         </form>
-        <section className="panel table-wrap">
+        <section className="panel table-wrap media-preparation-list">
           <table>
             <thead>
               <tr>
@@ -1221,7 +1225,7 @@ function MediaBottlesPage({ user }) {
                   </td>
                   <td>+{item.bottleCount}</td>
                   <td>{item.ph ?? item.media.ph ?? "—"} / {item.agar ?? item.media.agar ?? "—"} g/L</td>
-                  <td>{item.sterilizationMethod === "CSUP" ? "CSUP" : "Autoclave"}</td>
+                  <td>{item.sterilizationMethod === "AUTOCLAVE" ? "Autoclave" : item.sterilizationMethod === "CSUP" ? "CSUP" : "Not recorded"}</td>
                   {user.role === "ADMIN" && <td>{item.technician}</td>}
                   <td>{item.media.availableBottles}</td>
                   <td>{!String(item.id).startsWith("legacy-") && !String(item.id).startsWith("existing-stock-") ? <button type="button" className="secondary compact" onClick={() => editPreparation(item)}><Pencil size={14} /> Edit</button> : "—"}</td>

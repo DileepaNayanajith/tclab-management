@@ -69,10 +69,10 @@ class MediaPreparationController {
     MediaPreparationController(MediaPreparationRepository repository, MediaCompositionRepository media) { this.repository = repository; this.media = media; }
     record PreparationRequest(@NotNull Long mediaId, @Min(1) int bottleCount,
         @DecimalMin("0.0") Double ph, @DecimalMin("0.0") Double agar,
-        @Pattern(regexp = "AUTOCLAVE|CSUP") String sterilizationMethod) {}
+        @NotBlank @Pattern(regexp = "AUTOCLAVE|CSUP") String sterilizationMethod) {}
     record PreparationUpdateRequest(@Min(1) int bottleCount,
         @DecimalMin("0.0") Double ph, @DecimalMin("0.0") Double agar,
-        @Pattern(regexp = "AUTOCLAVE|CSUP") String sterilizationMethod) {}
+        @NotBlank @Pattern(regexp = "AUTOCLAVE|CSUP") String sterilizationMethod) {}
     @GetMapping List<MediaPreparation> all(Authentication auth) {
         var all = repository.findAll();
         if (auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) return all;
@@ -87,7 +87,7 @@ class MediaPreparationController {
         preparation.setBottleCount(input.bottleCount());
         preparation.setPh(input.ph() == null ? composition.getPh() : input.ph());
         preparation.setAgar(input.agar() == null ? composition.getAgar() : input.agar());
-        preparation.setSterilizationMethod(input.sterilizationMethod() == null ? "AUTOCLAVE" : input.sterilizationMethod());
+        preparation.setSterilizationMethod(input.sterilizationMethod());
         preparation.setTechnician(auth.getName());
         return repository.save(preparation);
     }
@@ -108,7 +108,7 @@ class MediaPreparationController {
             preparation.setBottleCount(input.bottleCount());
         }
         preparation.setPh(input.ph()); preparation.setAgar(input.agar());
-        preparation.setSterilizationMethod(input.sterilizationMethod() == null ? "AUTOCLAVE" : input.sterilizationMethod());
+        preparation.setSterilizationMethod(input.sterilizationMethod());
         return repository.save(preparation);
     }
 }
