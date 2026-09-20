@@ -116,8 +116,8 @@ class MediaPreparationController {
 @RestController @RequestMapping("/api/mother-bottles")
 @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_MOTHER_BOTTLES')")
 class MotherBottleController {
-    private final MotherBottleRepository repository; private final PlantRepository plants; private final MediaCompositionRepository media;
-    MotherBottleController(MotherBottleRepository repository, PlantRepository plants, MediaCompositionRepository media) { this.repository = repository; this.plants = plants; this.media = media; }
+    private final MotherBottleRepository repository; private final PlantRepository plants; private final MediaCompositionRepository media; private final SubcultureRepository subcultures;
+    MotherBottleController(MotherBottleRepository repository, PlantRepository plants, MediaCompositionRepository media, SubcultureRepository subcultures) { this.repository = repository; this.plants = plants; this.media = media; this.subcultures = subcultures; }
     record MotherRequest(@NotNull Long plantId, @NotNull Long mediaId,
         @Min(1) int plantCount, @Min(0) int cycle, String laminaFlow) {}
     @GetMapping List<MotherBottle> all() { return repository.findAll(); }
@@ -134,6 +134,14 @@ class MotherBottleController {
     @GetMapping("/next-barcode") String nextBarcodePreview(@RequestParam Long plantId) {
         var plant = plants.findById(plantId).orElseThrow(() -> new IllegalArgumentException("Plant not found"));
         return nextBarcode(plant.getCode());
+    }
+
+    @DeleteMapping("/{id}") @PreAuthorize("hasRole('ADMIN')") @ResponseStatus(HttpStatus.NO_CONTENT)
+    void delete(@PathVariable Long id) {
+        if (!repository.existsById(id)) throw new IllegalArgumentException("Plant initiation was not found");
+        if (subcultures.existsByParentId(id))
+            throw new IllegalStateException("This plant initiation cannot be deleted because subculture bottles are linked to it");
+        repository.deleteById(id);
     }
 
     private String nextBarcode(String plantCode) {

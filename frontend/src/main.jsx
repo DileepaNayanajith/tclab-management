@@ -1977,6 +1977,16 @@ function WorkflowPage({ type }) {
       setError(e.response?.data?.message || "Could not save this entry.");
     }
   }
+  async function removeInitiation(item) {
+    if (!confirm(`Delete plant initiation ${item.barcode}?`)) return;
+    setError("");
+    try {
+      await api.delete(`/mother-bottles/${item.id}`);
+      await load();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Could not delete this plant initiation.");
+    }
+  }
   const select = (key, label, items) => (
     <label>
       {label}
@@ -2005,7 +2015,7 @@ function WorkflowPage({ type }) {
         </p>
       </header>
       <section className="split workflow-layout">
-        <form className="panel form" onSubmit={save}>
+        <form className={`panel form ${type === "Plant Initiation" ? "plant-initiation-form" : ""}`} onSubmit={save}>
           <h2>
             {type === "Discards"
               ? "Record discard"
@@ -2138,7 +2148,7 @@ function WorkflowPage({ type }) {
             {type === "Discards" ? "Save discard" : "Register entry"}
           </button>
         </form>
-        <section className="panel table-wrap">
+        <section className={`panel table-wrap ${type === "Plant Initiation" ? "plant-initiation-list" : ""}`}>
           <table>
             <thead>
               <tr>
@@ -2146,6 +2156,7 @@ function WorkflowPage({ type }) {
                 <th>Plant / reason</th>
                 <th>Technician</th>
                 <th>Status / date</th>
+                {type === "Plant Initiation" && user.role === "ADMIN" && <th>Action</th>}
               </tr>
             </thead>
             <tbody>
@@ -2161,11 +2172,14 @@ function WorkflowPage({ type }) {
                   <td>
                     <span className="badge">{r.status || r.discardedDate}</span>
                   </td>
+                  {type === "Plant Initiation" && user.role === "ADMIN" && (
+                    <td><button type="button" className="icon danger" aria-label={`Delete ${r.barcode}`} onClick={() => removeInitiation(r)}><Trash2 size={16} /></button></td>
+                  )}
                 </tr>
               ))}
               {!rows.length && (
                 <tr>
-                  <td colSpan="4" className="empty">
+                  <td colSpan={type === "Plant Initiation" && user.role === "ADMIN" ? 5 : 4} className="empty">
                     No records yet.
                   </td>
                 </tr>

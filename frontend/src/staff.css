@@ -46,11 +46,22 @@ select {
 .media-preparation-list::-webkit-scrollbar-track { border-radius: 999px; background: #e7efeb; }
 .media-preparation-form::-webkit-scrollbar-thumb,
 .media-preparation-list::-webkit-scrollbar-thumb { border: 2px solid #e7efeb; border-radius: 999px; background: #5c8b74; }
+.plant-initiation-form { align-self: start; height: 540px; overflow-y: scroll; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.plant-initiation-list { align-self: start; height: 540px; overflow-x: auto; overflow-y: scroll; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.plant-initiation-list thead th { position: sticky; z-index: 2; top: 0; background: #fff; box-shadow: 0 1px #e7eeea; }
+.plant-initiation-form::-webkit-scrollbar,
+.plant-initiation-list::-webkit-scrollbar { width: 10px; height: 10px; }
+.plant-initiation-form::-webkit-scrollbar-track,
+.plant-initiation-list::-webkit-scrollbar-track { border-radius: 999px; background: #e7efeb; }
+.plant-initiation-form::-webkit-scrollbar-thumb,
+.plant-initiation-list::-webkit-scrollbar-thumb { border: 2px solid #e7efeb; border-radius: 999px; background: #5c8b74; }
 @media (max-width: 800px) {
   .media-composition-form,
   .media-composition-list,
   .media-preparation-form,
-  .media-preparation-list { height: 55vh; min-height: 340px; }
+  .media-preparation-list,
+  .plant-initiation-form,
+  .plant-initiation-list { height: 55vh; min-height: 340px; }
   .other-hormone-fields { grid-template-columns: 1fr; }
 }
 .compact {
