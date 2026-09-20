@@ -181,7 +181,7 @@ class SubcultureController {
         var parent = scannedSubculture.map(Subculture::getParent).orElseGet(() -> barcodes.findMother(input.parentBarcode())
             .orElseThrow(() -> new IllegalArgumentException("Scanned parent barcode was not found")));
         var parentStatus = scannedSubculture.map(Subculture::getStatus).orElse(parent.getStatus());
-        if (parentStatus != BottleStatus.ACTIVE) throw new IllegalStateException("Scanned parent bottle is not active");
+        if (parentStatus != BottleStatus.ACTIVE) throw new IllegalStateException(parentStatusMessage(parentStatus));
         int parentCycle = scannedSubculture.map(Subculture::getCycle).orElse(parent.getCycle());
         int cycle = parentCycle + 1;
         int totalBottles = input.lines().stream().mapToInt(LineRequest::bottleCount).sum();
@@ -206,6 +206,15 @@ class SubcultureController {
 
     private String barcodePrefix(String plantCode, int cycle, int week) {
         return "%s-%02d%02d-C%d".formatted(plantCode.toUpperCase(), LocalDate.now().getYear() % 100, week, cycle);
+    }
+
+    private String parentStatusMessage(BottleStatus status) {
+        return switch (status) {
+            case USED -> "This bottle has already been subcultured. Scan an active bottle instead.";
+            case DISCARDED -> "This bottle has already been discarded and cannot be subcultured.";
+            case EXITED -> "The plants in this bottle have already left the laboratory.";
+            case ACTIVE -> "Bottle is active";
+        };
     }
 
     private int nextSequence(String prefix) {

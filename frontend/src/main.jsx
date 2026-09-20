@@ -1302,6 +1302,7 @@ function SubculturePage({ user, sessionLaminaFlow }) {
     [staff, setStaff] = useState([]),
     [selectedForPrint, setSelectedForPrint] = useState([]),
     [created, setCreated] = useState([]),
+    [saving, setSaving] = useState(false),
     [error, setError] = useState("");
   async function load() {
     const [records, lookups] = await Promise.all([
@@ -1325,6 +1326,19 @@ function SubculturePage({ user, sessionLaminaFlow }) {
       const { data } = await api.get(
         `/workflow/scan/${encodeURIComponent(parentBarcode)}`,
       );
+      if (data.status !== "ACTIVE") {
+        const statusMessages = {
+          USED: "This bottle has already been subcultured. Scan an active bottle instead.",
+          DISCARDED: "This bottle has already been discarded and cannot be subcultured.",
+          EXITED: "The plants in this bottle have already left the laboratory.",
+        };
+        const message =
+          statusMessages[data.status] || "This bottle is not available for subculture.";
+        setScan(null);
+        setError(message);
+        window.alert(message);
+        return;
+      }
       setScan(data);
     } catch (e) {
       setScan(null);
@@ -1338,7 +1352,9 @@ function SubculturePage({ user, sessionLaminaFlow }) {
   }
   async function save(e) {
     e.preventDefault();
+    if (saving) return;
     setError("");
+    setSaving(true);
     try {
       const { data } = await api.post("/subcultures", {
         parentBarcode,
@@ -1348,11 +1364,19 @@ function SubculturePage({ user, sessionLaminaFlow }) {
         technicianUsername,
       });
       setCreated(data);
+      setScan(null);
+      setParentBarcode("");
       await load();
     } catch (e) {
-      setError(
-        e.response?.data?.message || "Could not create subculture bottles.",
-      );
+      const message =
+        e.response?.data?.message ||
+        (e.response
+          ? "Could not create subculture bottles. Please check the selected bottle and media stock."
+          : "Could not reach the server. Check the internet connection and try again.");
+      setError(message);
+      window.alert(message);
+    } finally {
+      setSaving(false);
     }
   }
   const selectedMedia = options.media.find(
@@ -1532,8 +1556,10 @@ function SubculturePage({ user, sessionLaminaFlow }) {
               </div>
             ))}
           </div>
-          <button disabled={!scan || !mediaId}>
-            Create {totalBottles} bottles & generate barcodes
+          <button disabled={!scan || !mediaId || saving}>
+            {saving
+              ? "Creating bottles…"
+              : `Create ${totalBottles} bottles & generate barcodes`}
           </button>
         </form>
         {created.length > 0 && (

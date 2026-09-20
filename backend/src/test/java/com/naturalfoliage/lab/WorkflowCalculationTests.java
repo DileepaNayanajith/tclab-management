@@ -85,6 +85,14 @@ class WorkflowCalculationTests {
         assertThat(media.findById(mediaId).orElseThrow().getAvailableBottles()).isEqualTo(8);
         assertThat(mothers.findByBarcode(parentBarcode).orElseThrow().getStatus()).isEqualTo(BottleStatus.USED);
 
+        mvc.perform(post("/api/subcultures").with(httpBasic("admin", "ChangeMe123!"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"parentBarcode":"%s","mediaId":%d,"laminaFlow":"LF-01","technicianUsername":"admin","lines":[{"bottleCount":1,"plantsPerBottle":1,"cultureType":"MULTIPLY"}]}
+                    """.formatted(shortScanCode, mediaId)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("This bottle has already been subcultured. Scan an active bottle instead."));
+
         mvc.perform(post("/api/plant-exits").with(httpBasic("admin", "ChangeMe123!"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -101,5 +109,13 @@ class WorkflowCalculationTests {
                     """.formatted(discardBarcode)))
             .andExpect(status().isOk());
         assertThat(subcultures.findByBarcode(discardBarcode).orElseThrow().getStatus()).isEqualTo(BottleStatus.DISCARDED);
+
+        mvc.perform(post("/api/subcultures").with(httpBasic("admin", "ChangeMe123!"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"parentBarcode":"%s","mediaId":%d,"laminaFlow":"LF-01","technicianUsername":"admin","lines":[{"bottleCount":1,"plantsPerBottle":1,"cultureType":"MULTIPLY"}]}
+                    """.formatted(discardBarcode, mediaId)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("This bottle has already been discarded and cannot be subcultured."));
     }
 }
