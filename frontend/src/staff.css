@@ -22,6 +22,10 @@ select {
   background: #eef4f1;
   color: #315e49;
 }
+.record-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+.icon.edit { color: #2f7457; }
+.plant-list-panel { align-self: start; max-height: 560px; overflow: auto; }
+.plant-list-panel thead th { position: sticky; z-index: 2; top: 0; background: #fff; box-shadow: 0 1px #e7eeea; }
 .compact {
   padding: 7px 10px;
   font-size: 11px;

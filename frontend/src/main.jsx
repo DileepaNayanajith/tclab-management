@@ -15,6 +15,7 @@ import {
   BadgeDollarSign,
   ShoppingCart,
   BarChart3,
+  Pencil,
 } from "lucide-react";
 import "./styles.css";
 import "./staff.css";
@@ -438,8 +439,7 @@ function Dashboard({ user }) {
   const [details, setDetails] = useState({ availablePlants: [], oldCultures: [] }),
     [mediaStock, setMediaStock] = useState([]),
     [mediaExpanded, setMediaExpanded] = useState(false),
-    [rootedExpanded, setRootedExpanded] = useState(false),
-    [now, setNow] = useState(new Date());
+    [rootedExpanded, setRootedExpanded] = useState(false);
   useEffect(() => {
     api.get("/dashboard/details").then((response) => setDetails(response.data));
     async function loadMediaStock() {
@@ -462,8 +462,6 @@ function Dashboard({ user }) {
       }
     }
     loadMediaStock();
-    const clock = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(clock);
   }, []);
   const tech = user.role === "TECHNICIAN";
   const availableMediaBottles = mediaStock.reduce(
@@ -495,7 +493,6 @@ function Dashboard({ user }) {
           <h1>{tech ? "Technician dashboard" : "Laboratory dashboard"}</h1>
           <p className="muted">{tech ? `${user.fullName} · ${user.employeeId} · ${user.labSection}` : "A quick view of today’s tissue-culture inventory."}</p>
         </div>
-        <time dateTime={now.toISOString()}><small>LOCAL DATE & TIME</small><b>{new Intl.DateTimeFormat("en-LK", { dateStyle: "medium", timeStyle: "medium" }).format(now)}</b></time>
       </header>
       <section className="cards dashboard-cards">
         {cards.map(([l, v, c]) => (
@@ -696,17 +693,22 @@ function CrudPage({ type, user }) {
     empty = Object.fromEntries(c.fields.map((f) => [f[0], ""]));
   const [rows, setRows] = useState([]),
     [form, setForm] = useState(empty),
+    [editingId, setEditingId] = useState(null),
     [error, setError] = useState("");
   const load = () => api.get(c.url).then((r) => setRows(r.data));
   useEffect(() => {
+    setForm(empty);
+    setEditingId(null);
     load();
   }, [type]);
   async function save(e) {
     e.preventDefault();
     setError("");
     try {
-      await api.post(c.url, form);
+      if (editingId) await api.put(`${c.url}/${editingId}`, form);
+      else await api.post(c.url, form);
       setForm(empty);
+      setEditingId(null);
       load();
     } catch (e) {
       setError(e.response?.data?.message || "Could not save this record.");
@@ -715,8 +717,23 @@ function CrudPage({ type, user }) {
   async function remove(id) {
     if (confirm("Delete this record?")) {
       await api.delete(`${c.url}/${id}`);
+      if (editingId === id) {
+        setEditingId(null);
+        setForm(empty);
+      }
       load();
     }
+  }
+  function edit(row) {
+    setEditingId(row.id);
+    setForm(Object.fromEntries(c.fields.map(([key]) => [key, row[key] ?? ""])));
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function cancelEdit() {
+    setEditingId(null);
+    setForm(empty);
+    setError("");
   }
   return (
     <>
@@ -726,7 +743,7 @@ function CrudPage({ type, user }) {
       </header>
       <section className="split">
         <form className="panel form" onSubmit={save}>
-          <h2>Add new</h2>
+          <h2>{editingId ? `Edit ${c.buttonLabel}` : "Add new"}</h2>
           {error && <div className="error">{error}</div>}
           {c.fields.map(([key, label, t]) => (
             <label key={key}>
@@ -742,14 +759,15 @@ function CrudPage({ type, user }) {
                   step="any"
                   value={form[key]}
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                  required
+                  required={!(type === "Plants" && key === "description")}
                 />
               )}
             </label>
           ))}
-          <button>Save {c.buttonLabel}</button>
+          <button>{editingId ? `Update ${c.buttonLabel}` : `Save ${c.buttonLabel}`}</button>
+          {editingId && <button type="button" className="secondary" onClick={cancelEdit}>Cancel editing</button>}
         </form>
-        <section className="panel table-wrap">
+        <section className={`panel table-wrap ${type === "Plants" ? "plant-list-panel" : ""}`}>
           <table>
             <thead>
               <tr>
@@ -766,14 +784,10 @@ function CrudPage({ type, user }) {
                     <td key={f[0]}>{r[f[0]] ?? "—"}</td>
                   ))}
                   <td>
-                    {user.role === "ADMIN" && (
-                      <button
-                        className="icon danger"
-                        onClick={() => remove(r.id)}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                    {user.role === "ADMIN" && type === "Plants" && (
+                      <div className="record-actions"><button type="button" className="icon edit" aria-label={`Edit ${r.code || r.name}`} onClick={() => edit(r)}><Pencil size={16} /></button><button type="button" className="icon danger" aria-label={`Delete ${r.code || r.name}`} onClick={() => remove(r.id)}><Trash2 size={16} /></button></div>
                     )}
+                    {user.role === "ADMIN" && type !== "Plants" && <button type="button" className="icon danger" aria-label={`Delete ${r.code || r.name}`} onClick={() => remove(r.id)}><Trash2 size={16} /></button>}
                   </td>
                 </tr>
               ))}
@@ -2280,6 +2294,15 @@ function StaffPage() {
   );
 }
 
+function WorkspaceClock({ activePage, user }) {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return <section className="workspace-clock"><div><small>CURRENT SECTION</small><b>{activePage}</b><span>{user.fullName} · {user.role}</span></div><time dateTime={now.toISOString()}><small>LOCAL DATE & TIME</small><b>{new Intl.DateTimeFormat("en-LK", { dateStyle: "full", timeStyle: "medium" }).format(now)}</b></time></section>;
+}
+
 function App() {
   const token = sessionStorage.getItem("labAuth");
   if (token) api.defaults.headers.common.Authorization = `Basic ${token}`;
@@ -2396,7 +2419,7 @@ function App() {
           </button>
         </div>
       </aside>
-      <main className="content">{content}</main>
+      <main className="content"><WorkspaceClock activePage={activePage} user={user} />{content}</main>
     </div>
   );
 }
