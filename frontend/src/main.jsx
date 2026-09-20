@@ -1269,12 +1269,13 @@ function BottleBarcodeLabel({ item }) {
 }
 
 function InitiationBarcodeLabel({ item }) {
+  const scanCode = `91${String(item.id).padStart(8, "0")}`;
   return (
     <div className="print-label initiation-print-label" data-initiation-label-id={item.id}>
       <Barcode
-        value={item.barcode}
-        format="CODE128"
-        width={1}
+        value={scanCode}
+        format="CODE128C"
+        width={1.5}
         height={18}
         margin={0}
         displayValue={false}

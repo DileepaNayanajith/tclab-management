@@ -2,6 +2,7 @@ package com.naturalfoliage.lab.controller;
 
 import com.naturalfoliage.lab.model.*;
 import com.naturalfoliage.lab.repository.*;
+import com.naturalfoliage.lab.service.BarcodeResolverService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -157,8 +158,8 @@ class MotherBottleController {
 @RestController @RequestMapping("/api/subcultures")
 @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_SUBCULTURES')")
 class SubcultureController {
-    private final SubcultureRepository repository; private final MotherBottleRepository mothers; private final MediaCompositionRepository media; private final UserRepository users;
-    SubcultureController(SubcultureRepository repository, MotherBottleRepository mothers, MediaCompositionRepository media, UserRepository users) { this.repository = repository; this.mothers = mothers; this.media = media; this.users = users; }
+    private final SubcultureRepository repository; private final MotherBottleRepository mothers; private final MediaCompositionRepository media; private final UserRepository users; private final BarcodeResolverService barcodes;
+    SubcultureController(SubcultureRepository repository, MotherBottleRepository mothers, MediaCompositionRepository media, UserRepository users, BarcodeResolverService barcodes) { this.repository = repository; this.mothers = mothers; this.media = media; this.users = users; this.barcodes = barcodes; }
     record LineRequest(@Min(1) int bottleCount, @Min(1) int plantsPerBottle, @Pattern(regexp = "MULTIPLY|ROOTING") String cultureType) {}
     record SubcultureRequest(@NotBlank String parentBarcode, @NotNull Long mediaId,
         @NotEmpty List<@Valid LineRequest> lines, @NotBlank String laminaFlow, String technicianUsername) {}
@@ -176,8 +177,8 @@ class SubcultureController {
             technician = users.findByUsername(input.technicianUsername()).filter(User::isActive)
                 .orElseThrow(() -> new IllegalArgumentException("Selected technician was not found or is inactive")).getUsername();
         }
-        var scannedSubculture = repository.findByBarcode(input.parentBarcode());
-        var parent = scannedSubculture.map(Subculture::getParent).orElseGet(() -> mothers.findByBarcode(input.parentBarcode())
+        var scannedSubculture = barcodes.findSubculture(input.parentBarcode());
+        var parent = scannedSubculture.map(Subculture::getParent).orElseGet(() -> barcodes.findMother(input.parentBarcode())
             .orElseThrow(() -> new IllegalArgumentException("Scanned parent barcode was not found")));
         var parentStatus = scannedSubculture.map(Subculture::getStatus).orElse(parent.getStatus());
         if (parentStatus != BottleStatus.ACTIVE) throw new IllegalStateException("Scanned parent bottle is not active");

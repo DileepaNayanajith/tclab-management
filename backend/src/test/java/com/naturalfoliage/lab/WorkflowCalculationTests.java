@@ -16,6 +16,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -65,12 +66,18 @@ class WorkflowCalculationTests {
                     """.formatted(plantId, mediaId)))
             .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         String parentBarcode = json.readTree(initiationResponse).get("barcode").asText();
+        long initiationId = json.readTree(initiationResponse).get("id").asLong();
+        String shortScanCode = "91%08d".formatted(initiationId);
+
+        mvc.perform(get("/api/workflow/scan/{barcode}", shortScanCode).with(httpBasic("admin", "ChangeMe123!")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.barcode").value(parentBarcode));
 
         var subcultureResponse = mvc.perform(post("/api/subcultures").with(httpBasic("admin", "ChangeMe123!"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"parentBarcode":"%s","mediaId":%d,"laminaFlow":"LF-01","technicianUsername":"admin","lines":[{"bottleCount":2,"plantsPerBottle":3,"cultureType":"ROOTING"}]}
-                    """.formatted(parentBarcode, mediaId)))
+                    """.formatted(shortScanCode, mediaId)))
             .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         var created = json.readTree(subcultureResponse);
         String exitBarcode = created.get(0).get("barcode").asText();

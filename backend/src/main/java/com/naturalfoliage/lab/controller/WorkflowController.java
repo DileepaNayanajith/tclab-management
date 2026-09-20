@@ -3,6 +3,7 @@ package com.naturalfoliage.lab.controller;
 import com.naturalfoliage.lab.model.*;
 import com.naturalfoliage.lab.repository.*;
 import com.naturalfoliage.lab.service.LabWorkflowService;
+import com.naturalfoliage.lab.service.BarcodeResolverService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -16,9 +17,9 @@ import java.time.temporal.WeekFields;
 @RestController @RequestMapping("/api")
 public class WorkflowController {
     private final LabWorkflowService workflow; private final DiscardRepository discards;
-    private final PlantRepository plants; private final MediaCompositionRepository media; private final MotherBottleRepository mothers; private final SubcultureRepository subcultures;
-    public WorkflowController(LabWorkflowService workflow, DiscardRepository discards, PlantRepository plants, MediaCompositionRepository media, MotherBottleRepository mothers, SubcultureRepository subcultures) {
-        this.workflow = workflow; this.discards = discards; this.plants = plants; this.media = media; this.mothers = mothers; this.subcultures = subcultures;
+    private final PlantRepository plants; private final MediaCompositionRepository media; private final MotherBottleRepository mothers; private final SubcultureRepository subcultures; private final BarcodeResolverService barcodes;
+    public WorkflowController(LabWorkflowService workflow, DiscardRepository discards, PlantRepository plants, MediaCompositionRepository media, MotherBottleRepository mothers, SubcultureRepository subcultures, BarcodeResolverService barcodes) {
+        this.workflow = workflow; this.discards = discards; this.plants = plants; this.media = media; this.mothers = mothers; this.subcultures = subcultures; this.barcodes = barcodes;
     }
     public record DiscardRequest(@NotBlank String barcode, @NotBlank String reason) {}
     @GetMapping("/discards") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DISCARDS')") List<DiscardRecord> discards(Authentication auth) {
@@ -56,15 +57,15 @@ public class WorkflowController {
         var today = LocalDate.now();
         int currentWeek = today.get(WeekFields.ISO.weekOfWeekBasedYear());
         int currentYear = today.get(WeekFields.ISO.weekBasedYear());
-        var subculture = subcultures.findByBarcode(barcode);
+        var subculture = barcodes.findSubculture(barcode);
         if (subculture.isPresent()) {
             var item = subculture.get(); var plant = item.getParent().getPlant();
-            return new ScanDetails(barcode, plant.getCode(), plant.getName(), item.getCycle(), item.getCycle() + 1,
+            return new ScanDetails(item.getBarcode(), plant.getCode(), plant.getName(), item.getCycle(), item.getCycle() + 1,
                 item.getSubcultureWeek(), currentYear, currentWeek, item.getTechnician(), item.getStatus().name(),
                 item.getPlantCount(), item.isRooting());
         }
-        var mother = mothers.findByBarcode(barcode).orElseThrow(() -> new IllegalArgumentException("Barcode not found"));
-        return new ScanDetails(barcode, mother.getPlant().getCode(), mother.getPlant().getName(), mother.getCycle(),
+        var mother = barcodes.findMother(barcode).orElseThrow(() -> new IllegalArgumentException("Barcode not found"));
+        return new ScanDetails(mother.getBarcode(), mother.getPlant().getCode(), mother.getPlant().getName(), mother.getCycle(),
             mother.getCycle() + 1, mother.getCultureWeek(), currentYear, currentWeek, mother.getTechnician(), mother.getStatus().name(),
             mother.getPlantCount(), false);
     }
