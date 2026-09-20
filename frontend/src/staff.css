@@ -26,11 +26,21 @@ select {
 .icon.edit { color: #2f7457; }
 .plant-list-panel { align-self: start; max-height: 560px; overflow: auto; }
 .plant-list-panel thead th { position: sticky; z-index: 2; top: 0; background: #fff; box-shadow: 0 1px #e7eeea; }
-.media-composition-form { align-self: start; max-height: 620px; overflow-y: auto; }
+.media-composition-form { align-self: start; height: 460px; overflow-y: scroll; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .media-composition-form .multi-select-menu { position: static; margin-top: 6px; box-shadow: none; }
-.media-composition-list { align-self: start; max-height: 620px; overflow: auto; }
+.media-composition-list { align-self: start; height: 460px; overflow-x: auto; overflow-y: scroll; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .media-composition-list thead th { position: sticky; z-index: 2; top: 0; background: #fff; box-shadow: 0 1px #e7eeea; }
 .media-composition-list .record-actions { min-width: 112px; }
+.media-composition-form::-webkit-scrollbar,
+.media-composition-list::-webkit-scrollbar { width: 10px; height: 10px; }
+.media-composition-form::-webkit-scrollbar-track,
+.media-composition-list::-webkit-scrollbar-track { border-radius: 999px; background: #e7efeb; }
+.media-composition-form::-webkit-scrollbar-thumb,
+.media-composition-list::-webkit-scrollbar-thumb { border: 2px solid #e7efeb; border-radius: 999px; background: #5c8b74; }
+@media (max-width: 800px) {
+  .media-composition-form,
+  .media-composition-list { height: 55vh; min-height: 340px; }
+}
 .compact {
   padding: 7px 10px;
   font-size: 11px;
