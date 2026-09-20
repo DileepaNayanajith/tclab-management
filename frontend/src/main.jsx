@@ -2022,10 +2022,10 @@ function WorkflowPage({ type, user }) {
     const printDocument = frame.contentDocument;
     printDocument.open();
     printDocument.write(`<!doctype html><html><head><title></title><style>
-      @page { size: 30mm 10mm; margin: 0; }
-      html, body { width: 30mm; margin: 0; padding: 0; background: #fff; }
+      @page { size: 10mm 30mm; margin: 0; }
+      html, body { width: 10mm; height: 30mm; margin: 0; padding: 0; background: #fff; }
       * { box-sizing: border-box; }
-      .initiation-print-label { width: 30mm; height: 10mm; padding: .35mm .6mm; overflow: hidden; text-align: center; break-inside: avoid; page-break-inside: avoid; page-break-after: always; }
+      .initiation-print-label { width: 30mm; height: 10mm; padding: .35mm .6mm; overflow: hidden; text-align: center; transform: translateX(10mm) rotate(90deg); transform-origin: top left; break-inside: avoid; page-break-inside: avoid; page-break-after: always; }
       .initiation-print-label:last-child { page-break-after: auto; }
       .initiation-print-label svg { display: block; width: 28.8mm; max-width: 28.8mm; height: 6.2mm; margin: 0 auto; }
       .initiation-print-label strong { display: block; overflow: hidden; margin: .2mm 0 0; font: 700 5pt/1 monospace; letter-spacing: -.15pt; white-space: nowrap; }
