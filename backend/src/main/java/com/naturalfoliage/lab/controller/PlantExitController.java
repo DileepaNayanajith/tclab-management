@@ -2,6 +2,7 @@ package com.naturalfoliage.lab.controller;
 
 import com.naturalfoliage.lab.model.*;
 import com.naturalfoliage.lab.repository.*;
+import com.naturalfoliage.lab.service.BarcodeResolverService;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -15,8 +16,8 @@ import java.util.*;
 @RequestMapping("/api/plant-exits")
 @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_PLANT_EXIT')")
 public class PlantExitController {
-    private final PlantExitRepository exits; private final SubcultureRepository subcultures;
-    public PlantExitController(PlantExitRepository exits, SubcultureRepository subcultures) { this.exits = exits; this.subcultures = subcultures; }
+    private final PlantExitRepository exits; private final SubcultureRepository subcultures; private final BarcodeResolverService barcodes;
+    public PlantExitController(PlantExitRepository exits, SubcultureRepository subcultures, BarcodeResolverService barcodes) { this.exits = exits; this.subcultures = subcultures; this.barcodes = barcodes; }
     public record ExitRequest(@NotBlank String barcode, @Min(1) int quantity,
         @NotBlank @Pattern(regexp = "HARDENING") String destination, String reference) {}
     @GetMapping public List<PlantExit> all(Authentication auth) {
@@ -27,14 +28,14 @@ public class PlantExitController {
     }
     @PostMapping @ResponseStatus(HttpStatus.CREATED) @Transactional
     public PlantExit create(@Valid @RequestBody ExitRequest input, Authentication auth) {
-        var bottle = subcultures.findByBarcode(input.barcode()).orElseThrow(() -> new IllegalArgumentException("Subculture bottle not found"));
+        var bottle = barcodes.findSubculture(input.barcode()).orElseThrow(() -> new IllegalArgumentException("Subculture bottle not found"));
         if (bottle.getStatus() != BottleStatus.ACTIVE) throw new IllegalStateException("Bottle is not active");
         if (input.quantity() > bottle.getPlantCount()) throw new IllegalStateException("Only " + bottle.getPlantCount() + " plants are available in this bottle");
         var plant = bottle.getParent().getPlant();
         bottle.setPlantCount(bottle.getPlantCount() - input.quantity());
         if (bottle.getPlantCount() == 0) bottle.setStatus(BottleStatus.EXITED);
         subcultures.save(bottle);
-        var exit = new PlantExit(); exit.setBarcode(input.barcode()); exit.setPlantCode(plant.getCode()); exit.setPlantName(plant.getName());
+        var exit = new PlantExit(); exit.setBarcode(bottle.getBarcode()); exit.setPlantCode(plant.getCode()); exit.setPlantName(plant.getName());
         exit.setQuantity(input.quantity()); exit.setDestination(input.destination()); exit.setReference(input.reference()); exit.setTechnician(auth.getName());
         return exits.save(exit);
     }

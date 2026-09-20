@@ -1247,23 +1247,18 @@ function MediaBottlesPage({ user }) {
 }
 
 function BottleBarcodeLabel({ item }) {
-  const year = item.createdDate
-    ? new Date(`${item.createdDate}T00:00:00`).getFullYear()
-    : new Date().getFullYear();
+  const scanCode = `92${String(item.id).padStart(8, "0")}`;
   return (
-    <div className="print-label">
+    <div className="print-label initiation-print-label" data-subculture-label-id={item.id}>
       <Barcode
-        value={item.barcode}
-        format="CODE128"
-        width={0.9}
-        height={30}
+        value={scanCode}
+        format="CODE128C"
+        width={1.5}
+        height={18}
         margin={0}
         displayValue={false}
       />
       <strong>{item.barcode}</strong>
-      <span>
-        {item.parent.plant.code} · {year}/W{String(item.subcultureWeek).padStart(2, "0")} · C{item.cycle} · {item.rooting ? "R" : "M"}
-      </span>
     </div>
   );
 }
@@ -1297,7 +1292,7 @@ function SubculturePage({ user, sessionLaminaFlow }) {
     [scan, setScan] = useState(null),
     [mediaId, setMediaId] = useState(""),
     [lines, setLines] = useState([{ ...blankLine }]),
-    [laminaFlow, setLaminaFlow] = useState(sessionLaminaFlow || ""),
+    [laminaFlow, setLaminaFlow] = useState(sessionLaminaFlow || "LF-01"),
     [technicianUsername, setTechnicianUsername] = useState(user.username),
     [staff, setStaff] = useState([]),
     [selectedForPrint, setSelectedForPrint] = useState([]),
@@ -1401,7 +1396,32 @@ function SubculturePage({ user, sessionLaminaFlow }) {
   function printOne(id) {
     setCreated([]);
     setSelectedForPrint([id]);
-    window.setTimeout(() => window.print(), 100);
+    window.setTimeout(() => printSubcultureLabels([id]), 100);
+  }
+  function printSubcultureLabels(ids) {
+    const labels = ids
+      .map((id) => document.querySelector(`[data-subculture-label-id="${id}"]`)?.outerHTML)
+      .filter(Boolean);
+    if (!labels.length) return;
+    const frame = document.createElement("iframe");
+    frame.setAttribute("title", "Subculture barcode labels");
+    frame.style.cssText = "position:fixed;width:0;height:0;border:0;right:0;bottom:0";
+    document.body.appendChild(frame);
+    const printDocument = frame.contentDocument;
+    printDocument.open();
+    printDocument.write(`<!doctype html><html><head><title></title><style>
+      @page { size: 10mm 30mm; margin: 0; }
+      html, body { width: 10mm; height: 30mm; margin: 0; padding: 0; background: #fff; }
+      * { box-sizing: border-box; }
+      .initiation-print-label { width: 30mm; height: 10mm; padding: .35mm .6mm; overflow: hidden; text-align: center; transform: translateX(10mm) rotate(90deg); transform-origin: top left; break-inside: avoid; page-break-inside: avoid; page-break-after: always; }
+      .initiation-print-label:last-child { page-break-after: auto; }
+      .initiation-print-label svg { display: block; width: 28.8mm; max-width: 28.8mm; height: 6.2mm; margin: 0 auto; }
+      .initiation-print-label strong { display: block; overflow: hidden; margin: .2mm 0 0; font: 700 5pt/1 monospace; letter-spacing: -.15pt; white-space: nowrap; }
+    </style></head><body>${labels.join("")}</body></html>`);
+    printDocument.close();
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+    setTimeout(() => frame.remove(), 1500);
   }
   return (
     <>
@@ -1568,7 +1588,7 @@ function SubculturePage({ user, sessionLaminaFlow }) {
               <b>{created.length} barcodes created</b>
               <p>Print now or reopen this recent batch later.</p>
             </div>
-            <button onClick={() => window.print()}>Print all barcodes</button>
+            <button onClick={() => printSubcultureLabels(created.map((item) => item.id))}>Print all barcodes</button>
             <div className="barcode-sheet">
               {printRows.map((item) => (
                 <BottleBarcodeLabel item={item} key={item.id} />
@@ -1589,7 +1609,7 @@ function SubculturePage({ user, sessionLaminaFlow }) {
           <button
             type="button"
             disabled={!selectedForPrint.length}
-            onClick={() => window.print()}
+            onClick={() => printSubcultureLabels(selectedForPrint)}
           >
             Print selected ({selectedForPrint.length})
           </button>

@@ -82,8 +82,14 @@ class WorkflowCalculationTests {
         var created = json.readTree(subcultureResponse);
         String exitBarcode = created.get(0).get("barcode").asText();
         String discardBarcode = created.get(1).get("barcode").asText();
+        String exitScanCode = "92%08d".formatted(created.get(0).get("id").asLong());
+        String discardScanCode = "92%08d".formatted(created.get(1).get("id").asLong());
         assertThat(media.findById(mediaId).orElseThrow().getAvailableBottles()).isEqualTo(8);
         assertThat(mothers.findByBarcode(parentBarcode).orElseThrow().getStatus()).isEqualTo(BottleStatus.USED);
+
+        mvc.perform(get("/api/workflow/scan/{barcode}", exitScanCode).with(httpBasic("admin", "ChangeMe123!")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.barcode").value(exitBarcode));
 
         mvc.perform(post("/api/subcultures").with(httpBasic("admin", "ChangeMe123!"))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -97,7 +103,7 @@ class WorkflowCalculationTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"barcode":"%s","quantity":2,"destination":"HARDENING","reference":"Test tray"}
-                    """.formatted(exitBarcode)))
+                    """.formatted(exitScanCode)))
             .andExpect(status().isCreated());
         assertThat(subcultures.findByBarcode(exitBarcode).orElseThrow().getPlantCount()).isEqualTo(1);
         assertThat(subcultures.findByBarcode(exitBarcode).orElseThrow().getStatus()).isEqualTo(BottleStatus.ACTIVE);
@@ -106,7 +112,7 @@ class WorkflowCalculationTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"barcode":"%s","reason":"Bacterial"}
-                    """.formatted(discardBarcode)))
+                    """.formatted(discardScanCode)))
             .andExpect(status().isOk());
         assertThat(subcultures.findByBarcode(discardBarcode).orElseThrow().getStatus()).isEqualTo(BottleStatus.DISCARDED);
 
@@ -114,7 +120,7 @@ class WorkflowCalculationTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"parentBarcode":"%s","mediaId":%d,"laminaFlow":"LF-01","technicianUsername":"admin","lines":[{"bottleCount":1,"plantsPerBottle":1,"cultureType":"MULTIPLY"}]}
-                    """.formatted(discardBarcode, mediaId)))
+                    """.formatted(discardScanCode, mediaId)))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("This bottle has already been discarded and cannot be subcultured."));
     }
