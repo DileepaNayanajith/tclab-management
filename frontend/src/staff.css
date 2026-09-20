@@ -498,6 +498,35 @@ select {
   align-items: center;
   gap: 8px;
 }
+.initiation-print-toolbar {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  margin: 0 0 12px;
+  padding: 0 0 12px;
+  background: #fff;
+  border-bottom: 1px solid #e7eeea;
+}
+.initiation-print-toolbar p { margin: 3px 0 0; color: #60746a; font-size: 11px; }
+.initiation-print-label {
+  width: 30mm;
+  height: 10mm;
+  padding: 0.35mm 0.6mm;
+}
+.initiation-print-label svg {
+  width: 28.8mm;
+  max-width: 28.8mm;
+  height: 6.2mm;
+  margin: 0 auto;
+}
+.initiation-print-label strong {
+  overflow: hidden;
+  margin: 0.2mm 0 0;
+  font-size: 5pt;
+  line-height: 1;
+  letter-spacing: -0.15pt;
+  white-space: nowrap;
+}
 @media (max-width: 800px) {
   .scan-row,
   .subculture-meta,
@@ -510,6 +539,10 @@ select {
 @media print {
   @page barcode-label {
     size: 50mm 25mm;
+    margin: 0;
+  }
+  @page initiation-barcode-label {
+    size: 30mm 10mm;
     margin: 0;
   }
   body * {
@@ -528,8 +561,10 @@ select {
     margin: 0;
     padding: 0;
   }
+  .initiation-barcode-sheet { width: 30mm; }
   .print-label {
     page: barcode-label;
   }
+  .initiation-print-label { page: initiation-barcode-label; }
   .print-label:last-child { page-break-after: auto; }
 }

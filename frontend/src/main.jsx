@@ -1268,6 +1268,22 @@ function BottleBarcodeLabel({ item }) {
   );
 }
 
+function InitiationBarcodeLabel({ item }) {
+  return (
+    <div className="print-label initiation-print-label">
+      <Barcode
+        value={item.barcode}
+        format="CODE128"
+        width={1}
+        height={18}
+        margin={0}
+        displayValue={false}
+      />
+      <strong>{item.barcode}</strong>
+    </div>
+  );
+}
+
 function SubculturePage({ user, sessionLaminaFlow }) {
   const blankLine = {
     bottleCount: 1,
@@ -1948,6 +1964,7 @@ function WorkflowPage({ type, user }) {
     }),
     [form, setForm] = useState(initial),
     [nextBarcode, setNextBarcode] = useState("Select a plant to generate"),
+    [selectedForPrint, setSelectedForPrint] = useState([]),
     [error, setError] = useState("");
   async function load() {
     const [records, lookups] = await Promise.all([
@@ -1970,7 +1987,8 @@ function WorkflowPage({ type, user }) {
     e.preventDefault();
     setError("");
     try {
-      await api.post(paths[type], form);
+      const { data } = await api.post(paths[type], form);
+      if (type === "Plant Initiation") setSelectedForPrint([data.id]);
       setForm(initial);
       await load();
     } catch (e) {
@@ -1987,6 +2005,18 @@ function WorkflowPage({ type, user }) {
       setError(requestError.response?.data?.message || "Could not delete this plant initiation.");
     }
   }
+  function toggleInitiationPrint(id) {
+    setSelectedForPrint((selected) =>
+      selected.includes(id) ? selected.filter((itemId) => itemId !== id) : [...selected, id],
+    );
+  }
+  function printInitiation(id) {
+    setSelectedForPrint([id]);
+    setTimeout(() => window.print(), 0);
+  }
+  const initiationPrintRows = type === "Plant Initiation"
+    ? rows.filter((item) => selectedForPrint.includes(item.id))
+    : [];
   const select = (key, label, items) => (
     <label>
       {label}
@@ -2149,9 +2179,21 @@ function WorkflowPage({ type, user }) {
           </button>
         </form>
         <section className={`panel table-wrap ${type === "Plant Initiation" ? "plant-initiation-list" : ""}`}>
+          {type === "Plant Initiation" && (
+            <div className="line-head initiation-print-toolbar">
+              <div>
+                <b>30 mm × 10 mm barcode labels</b>
+                <p>Select past initiations or print one label directly.</p>
+              </div>
+              <button type="button" disabled={!selectedForPrint.length} onClick={() => window.print()}>
+                Print selected ({selectedForPrint.length})
+              </button>
+            </div>
+          )}
           <table>
             <thead>
               <tr>
+                {type === "Plant Initiation" && <th>Print</th>}
                 <th>Barcode</th>
                 <th>Plant / reason</th>
                 <th>Technician</th>
@@ -2162,6 +2204,19 @@ function WorkflowPage({ type, user }) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
+                  {type === "Plant Initiation" && (
+                    <td>
+                      <div className="print-actions">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${r.barcode} for printing`}
+                          checked={selectedForPrint.includes(r.id)}
+                          onChange={() => toggleInitiationPrint(r.id)}
+                        />
+                        <button type="button" className="secondary compact" onClick={() => printInitiation(r.id)}>Print one</button>
+                      </div>
+                    </td>
+                  )}
                   <td>
                     <b>{r.barcode}</b>
                   </td>
@@ -2183,13 +2238,18 @@ function WorkflowPage({ type, user }) {
               ))}
               {!rows.length && (
                 <tr>
-                  <td colSpan={type === "Plant Initiation" && user.role === "ADMIN" ? 5 : 4} className="empty">
+                  <td colSpan={type === "Plant Initiation" ? (user.role === "ADMIN" ? 6 : 5) : 4} className="empty">
                     No records yet.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+          {type === "Plant Initiation" && selectedForPrint.length > 0 && (
+            <div className="barcode-sheet initiation-barcode-sheet">
+              {initiationPrintRows.map((item) => <InitiationBarcodeLabel item={item} key={item.id} />)}
+            </div>
+          )}
         </section>
       </section>
     </>
