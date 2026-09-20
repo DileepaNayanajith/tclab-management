@@ -1919,7 +1919,7 @@ function PlantExitPage({ user }) {
   return <><header><p className="eyebrow">HARDENING</p><h1>Plants sent for hardening</h1><p className="muted">Record healthy plants moved from the laboratory to hardening. Customer sales are handled only through Sales / POS.</p></header><section className="split workflow-layout"><form className="panel form" onSubmit={save}><h2>Release to hardening</h2><label>Scan/read subculture barcode<input list="exit-barcodes" value={barcode} onChange={e=>setBarcode(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();detect()}}} required/></label><datalist id="exit-barcodes">{options.bottles.filter(item=>item.label.includes('Subculture')).map(item=><option value={item.value} key={item.value}>{item.label}</option>)}</datalist><button type="button" className="secondary" onClick={detect}>Detect barcode</button>{error&&<div className="error">{error}</div>}{scan&&<><div className="stock-status"><b>{scan.plantCode} — {scan.plantName}</b><br/>Available in bottle: {scan.plantCount} · {scan.rooting?'Rooting':'Multiply'}</div><label>Quantity sent to hardening<input type="number" min="1" max={scan.plantCount} value={quantity} onChange={e=>setQuantity(e.target.value)} required/></label><label>Hardening location / reference<input value={reference} onChange={e=>setReference(e.target.value)} placeholder="Optional reference"/></label><button>Confirm hardening exit</button></>}</form><section className="panel table-wrap"><table><thead><tr><th>Date / time</th><th>Plant</th><th>Barcode</th><th>Quantity</th><th>Reference</th>{admin&&<th>Released by</th>}</tr></thead><tbody>{rows.filter(item=>item.destination==='HARDENING').map(item=><tr key={item.id}><td>{new Date(item.exitedAt).toLocaleString()}</td><td>{item.plantCode} — {item.plantName}</td><td><b>{item.barcode}</b></td><td>{item.quantity}</td><td>{item.reference||'—'}</td>{admin&&<td>{item.technician}</td>}</tr>)}{!rows.some(item=>item.destination==='HARDENING')&&<tr><td colSpan={admin?6:5} className="empty">No hardening exits yet.</td></tr>}</tbody></table></section></section></>
 }
 
-function WorkflowPage({ type }) {
+function WorkflowPage({ type, user }) {
   const paths = {
     "Plant Initiation": "/mother-bottles",
     Subcultures: "/subcultures",
@@ -2496,7 +2496,7 @@ function App() {
     ) : configs[activePage] ? (
       <CrudPage type={activePage} user={user} />
     ) : (
-      <WorkflowPage type={activePage} />
+      <WorkflowPage type={activePage} user={user} />
     );
   return (
     <div className="shell">
