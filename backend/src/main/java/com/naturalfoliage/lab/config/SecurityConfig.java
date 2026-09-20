@@ -38,9 +38,13 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
+                .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/robots.txt", "/error").permitAll()
                 .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMIN")
+                .requestMatchers("/api/**").authenticated()
                 .anyRequest().authenticated())
-            .httpBasic(Customizer.withDefaults()).build();
+            .httpBasic(basic -> basic.authenticationEntryPoint((request, response, exception) ->
+                response.sendError(401, "Unauthorized")))
+            .build();
     }
 
     @Bean CorsConfigurationSource cors(@Value("${app.cors.allowed-origin}") String origin) {

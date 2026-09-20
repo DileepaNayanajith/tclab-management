@@ -2286,6 +2286,7 @@ function App() {
             className="icon"
             onClick={() => {
               sessionStorage.clear();
+              delete api.defaults.headers.common.Authorization;
               setUser(null);
             }}
           >

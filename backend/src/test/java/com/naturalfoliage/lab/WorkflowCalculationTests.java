@@ -13,7 +13,9 @@ import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -26,6 +28,16 @@ class WorkflowCalculationTests {
     @Autowired MediaCompositionRepository media;
     @Autowired MotherBottleRepository mothers;
     @Autowired SubcultureRepository subcultures;
+
+    @Test
+    void frontendLoadsWithoutBrowserAuthenticationChallenge() throws Exception {
+        mvc.perform(get("/"))
+            .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotEqualTo(401))
+            .andExpect(header().doesNotExist("WWW-Authenticate"));
+        mvc.perform(get("/api/me"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(header().doesNotExist("WWW-Authenticate"));
+    }
 
     @Test
     void preparationSubcultureExitAndDiscardKeepInventoryConsistent() throws Exception {
