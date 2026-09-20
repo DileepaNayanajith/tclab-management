@@ -2170,7 +2170,11 @@ function WorkflowPage({ type, user }) {
                   </td>
                   <td>{r.technician}</td>
                   <td>
-                    <span className="badge">{r.status || r.discardedDate}</span>
+                    <span className="badge">
+                      {type === "Plant Initiation"
+                        ? ({ ACTIVE: "Active", USED: "Subcultured", DISCARDED: "Discarded" }[r.status] || r.status)
+                        : r.status || r.discardedDate}
+                    </span>
                   </td>
                   {type === "Plant Initiation" && user.role === "ADMIN" && (
                     <td><button type="button" className="icon danger" aria-label={`Delete ${r.barcode}`} onClick={() => removeInitiation(r)}><Trash2 size={16} /></button></td>
