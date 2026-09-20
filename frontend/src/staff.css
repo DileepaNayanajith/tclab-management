@@ -40,6 +40,7 @@ select {
 @media (max-width: 800px) {
   .media-composition-form,
   .media-composition-list { height: 55vh; min-height: 340px; }
+  .other-hormone-fields { grid-template-columns: 1fr; }
 }
 .compact {
   padding: 7px 10px;
@@ -189,6 +190,9 @@ select {
 .hormone-row.selected {
   background: #eef7f2;
 }
+.other-hormone-row { align-items: flex-start; flex-direction: column; }
+.other-hormone-fields { display: grid; grid-template-columns: minmax(130px, 1fr) auto; gap: 8px; width: 100%; padding-left: 23px; }
+.other-hormone-fields > input { min-width: 0; height: 34px; padding: 6px 8px; }
 .multi-select-menu label {
   display: flex;
   flex-direction: row;

@@ -569,40 +569,54 @@ function Dashboard({ user }) {
 }
 
 function HormoneMultiSelect({ value, onChange }) {
-  const escaped = (option) => option.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const selected = hormoneOptions.filter((option) =>
-    new RegExp(`(^|[;,]\\s*)(?:${escaped(option)})(?:\\s|;|$)`).test(
-      value || "",
-    ),
-  );
-  const quantity = (option) =>
-    (value || "").match(
-      new RegExp(`${escaped(option)}\\s+([0-9]*\\.?[0-9]+)\\s*mg/L`, "i"),
-    )?.[1] || "";
-  function serialize(options, changedOption, changedQuantity) {
-    return options
-      .map((option) => {
-        const amount =
-          option === changedOption ? changedQuantity : quantity(option);
-        return amount ? `${option} ${amount} mg/L` : option;
-      })
-      .join("; ");
+  const segments = (value || "").split(";").map((item) => item.trim()).filter(Boolean);
+  const parseSegment = (segment) => {
+    const match = segment.match(/^(.*?)(?:\s+([0-9]*\.?[0-9]+)\s*mg\/L)?$/i);
+    return { name: match?.[1]?.trim() || "", quantity: match?.[2] || "" };
+  };
+  const parsed = segments.map(parseSegment);
+  const fixedEntry = (option) => parsed.find((item) => item.name.toLowerCase() === option.toLowerCase());
+  const selected = hormoneOptions.filter((option) => fixedEntry(option));
+  const quantity = (option) => fixedEntry(option)?.quantity || "";
+  const savedOther = parsed.find((item) => !hormoneOptions.some((option) => option.toLowerCase() === item.name.toLowerCase()));
+  const [otherEnabled, setOtherEnabled] = useState(Boolean(savedOther));
+  const [otherName, setOtherName] = useState(savedOther?.name || "");
+  const [otherQuantity, setOtherQuantity] = useState(savedOther?.quantity || "");
+  useEffect(() => {
+    setOtherEnabled(Boolean(savedOther));
+    setOtherName(savedOther?.name || "");
+    setOtherQuantity(savedOther?.quantity || "");
+  }, [value]);
+  function serialize(options, customName = otherName, customQuantity = otherQuantity) {
+    const fixed = options.map((option) => quantity(option) ? `${option} ${quantity(option)} mg/L` : option);
+    if (customName.trim()) fixed.push(customQuantity ? `${customName.trim()} ${customQuantity} mg/L` : customName.trim());
+    return fixed.join("; ");
   }
   function toggle(option) {
-    onChange(
-      selected.includes(option)
-        ? serialize(selected.filter((item) => item !== option))
-        : serialize([...selected, option]),
-    );
+    onChange(serialize(selected.includes(option) ? selected.filter((item) => item !== option) : [...selected, option]));
   }
   function setQuantity(option, amount) {
-    onChange(serialize(selected, option, amount));
+    const fixed = selected.map((item) => item === option ? (amount ? `${item} ${amount} mg/L` : item) : quantity(item) ? `${item} ${quantity(item)} mg/L` : item);
+    if (otherName.trim()) fixed.push(otherQuantity ? `${otherName.trim()} ${otherQuantity} mg/L` : otherName.trim());
+    onChange(fixed.join("; "));
   }
+  function toggleOther() {
+    if (otherEnabled) {
+      setOtherEnabled(false); setOtherName(""); setOtherQuantity("");
+      onChange(serialize(selected, "", ""));
+    } else setOtherEnabled(true);
+  }
+  function updateOther(name, amount) {
+    setOtherName(name); setOtherQuantity(amount);
+    onChange(serialize(selected, name, amount));
+  }
+  const summaries = selected.map((option) => quantity(option) ? `${option} ${quantity(option)} mg/L` : option);
+  if (otherEnabled) summaries.push(otherName ? `${otherName}${otherQuantity ? ` ${otherQuantity} mg/L` : ""}` : "Other (enter name)");
   return (
     <details className="multi-select">
       <summary>
-        {selected.length
-          ? selected.map((option) => quantity(option) ? `${option} ${quantity(option)} mg/L` : option).join(", ")
+        {summaries.length
+          ? summaries.join(", ")
           : "Select one or more hormones"}
       </summary>
       <div className="multi-select-menu">
@@ -636,8 +650,12 @@ function HormoneMultiSelect({ value, onChange }) {
             )}
           </div>
         ))}
+        <div className={`hormone-row other-hormone-row ${otherEnabled ? "selected" : ""}`}>
+          <label><input type="checkbox" checked={otherEnabled} onChange={toggleOther} /><span>Other</span></label>
+          {otherEnabled && <div className="other-hormone-fields"><input aria-label="Other hormone name" placeholder="Hormone name" value={otherName} onChange={(e) => updateOther(e.target.value, otherQuantity)} required /><div className="quantity-field"><input aria-label="Other hormone quantity" type="number" min="0" step="0.001" placeholder="0.000" value={otherQuantity} onChange={(e) => updateOther(otherName, e.target.value)} required /><span>mg/L</span></div></div>}
+        </div>
       </div>
-      {selected.length > 0 && (
+      {summaries.length > 0 && (
         <div className="selected-values">
           {selected.map((option) => (
             <span key={option}>
@@ -647,6 +665,7 @@ function HormoneMultiSelect({ value, onChange }) {
                 : " · quantity required"}
             </span>
           ))}
+          {otherEnabled && <span>{otherName || "Other hormone name required"}{otherQuantity ? ` · ${otherQuantity} mg/L` : " · quantity required"}</span>}
         </div>
       )}
     </details>
