@@ -1286,6 +1286,11 @@ function SubculturePage({ user, sessionLaminaFlow }) {
     plantsPerBottle: 1,
     cultureType: "MULTIPLY",
   };
+  const clearedLine = {
+    bottleCount: "",
+    plantsPerBottle: "",
+    cultureType: "",
+  };
   const [rows, setRows] = useState([]),
     [options, setOptions] = useState({ media: [], bottles: [] }),
     [parentBarcode, setParentBarcode] = useState(""),
@@ -1363,7 +1368,7 @@ function SubculturePage({ user, sessionLaminaFlow }) {
       setScan(null);
       setParentBarcode("");
       setMediaId("");
-      setLines([{ ...blankLine }]);
+      setLines([{ ...clearedLine }]);
       setSelectedForPrint([]);
       await load();
       window.setTimeout(() => parentBarcodeInput.current?.focus(), 0);
@@ -1567,7 +1572,9 @@ function SubculturePage({ user, sessionLaminaFlow }) {
                     onChange={(e) =>
                       updateLine(index, "cultureType", e.target.value)
                     }
+                    required
                   >
+                    <option value="">Select culture type…</option>
                     <option value="MULTIPLY">Multiply</option>
                     <option value="ROOTING">Rooting</option>
                   </select>
