@@ -1299,6 +1299,7 @@ function SubculturePage({ user, sessionLaminaFlow }) {
     [created, setCreated] = useState([]),
     [saving, setSaving] = useState(false),
     [error, setError] = useState("");
+  const parentBarcodeInput = useRef(null);
   async function load() {
     const [records, lookups] = await Promise.all([
       api.get("/subcultures"),
@@ -1361,7 +1362,11 @@ function SubculturePage({ user, sessionLaminaFlow }) {
       setCreated(data);
       setScan(null);
       setParentBarcode("");
+      setMediaId("");
+      setLines([{ ...blankLine }]);
+      setSelectedForPrint([]);
       await load();
+      window.setTimeout(() => parentBarcodeInput.current?.focus(), 0);
     } catch (e) {
       const message =
         e.response?.data?.message ||
@@ -1441,9 +1446,14 @@ function SubculturePage({ user, sessionLaminaFlow }) {
           <label>
             Scan/read parent barcode
             <input
+              ref={parentBarcodeInput}
               list="active-barcodes"
               value={parentBarcode}
-              onChange={(e) => setParentBarcode(e.target.value)}
+              onChange={(e) => {
+                setParentBarcode(e.target.value);
+                setScan(null);
+                setError("");
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
