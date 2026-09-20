@@ -43,6 +43,17 @@ class MediaController {
         .map(item -> new MediaLookup(item.getId(), item.getCode(), item.getBasalMedia(), item.getAvailableBottles())).toList(); }
     @PostMapping @PreAuthorize("hasRole('ADMIN')") @ResponseStatus(HttpStatus.CREATED)
     MediaComposition create(@Valid @RequestBody MediaComposition media) { return repository.save(media); }
+    @PutMapping("/{id}") @PreAuthorize("hasRole('ADMIN')")
+    MediaComposition update(@PathVariable Long id, @Valid @RequestBody MediaComposition input) {
+        var item = repository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Media composition not found"));
+        item.setCode(input.getCode());
+        item.setBasalMedia(input.getBasalMedia());
+        item.setHormones(input.getHormones());
+        item.setPh(input.getPh());
+        item.setAgar(input.getAgar());
+        return repository.save(item);
+    }
     record StockRequest(@Min(0) int availableBottles) {}
     @PatchMapping("/{id}/stock") @PreAuthorize("hasRole('ADMIN')") MediaComposition stock(@PathVariable Long id, @Valid @RequestBody StockRequest input) {
         var item = repository.findById(id).orElseThrow(() -> new IllegalArgumentException("Media composition not found"));

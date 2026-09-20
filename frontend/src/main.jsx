@@ -816,6 +816,7 @@ function MediaCompositionPage() {
   };
   const [rows, setRows] = useState([]),
     [form, setForm] = useState(initial),
+    [editingId, setEditingId] = useState(null),
     [error, setError] = useState("");
   const load = () => api.get("/media").then((r) => setRows(r.data));
   useEffect(() => {
@@ -825,12 +826,31 @@ function MediaCompositionPage() {
     e.preventDefault();
     setError("");
     try {
-      await api.post("/media", form);
+      if (editingId) await api.put(`/media/${editingId}`, form);
+      else await api.post("/media", form);
       setForm(initial);
+      setEditingId(null);
       load();
     } catch (e) {
       setError(e.response?.data?.message || "Could not save media.");
     }
+  }
+  function edit(item) {
+    setEditingId(item.id);
+    setForm({
+      code: item.code || "",
+      basalMedia: item.basalMedia || "",
+      hormones: item.hormones || "",
+      ph: item.ph ?? "",
+      agar: item.agar ?? "",
+    });
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function cancelEdit() {
+    setEditingId(null);
+    setForm(initial);
+    setError("");
   }
   return (
     <>
@@ -844,7 +864,7 @@ function MediaCompositionPage() {
       </header>
       <section className="split">
         <form className="panel form" onSubmit={save}>
-          <h2>Add media composition</h2>
+          <h2>{editingId ? "Edit media composition" : "Add media composition"}</h2>
           {error && <div className="error">{error}</div>}
           <label>
             Media code
@@ -889,7 +909,8 @@ function MediaCompositionPage() {
               required
             />
           </label>
-          <button>Save media</button>
+          <button>{editingId ? "Update media" : "Save media"}</button>
+          {editingId && <button type="button" className="secondary" onClick={cancelEdit}>Cancel editing</button>}
         </form>
         <section className="panel table-wrap">
           <table>
@@ -898,6 +919,7 @@ function MediaCompositionPage() {
                 <th>Code / recipe</th>
                 <th>Hormones</th>
                 <th>Available bottles</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -911,6 +933,7 @@ function MediaCompositionPage() {
                   <td>
                     <b>{item.availableBottles}</b>
                   </td>
+                  <td><button type="button" className="secondary compact" onClick={() => edit(item)}><Pencil size={14} /> Edit</button></td>
                 </tr>
               ))}
             </tbody>
