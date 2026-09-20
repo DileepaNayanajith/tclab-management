@@ -26,6 +26,11 @@ select {
 .icon.edit { color: #2f7457; }
 .plant-list-panel { align-self: start; max-height: 560px; overflow: auto; }
 .plant-list-panel thead th { position: sticky; z-index: 2; top: 0; background: #fff; box-shadow: 0 1px #e7eeea; }
+.media-composition-form { align-self: start; max-height: 620px; overflow-y: auto; }
+.media-composition-form .multi-select-menu { position: static; margin-top: 6px; box-shadow: none; }
+.media-composition-list { align-self: start; max-height: 620px; overflow: auto; }
+.media-composition-list thead th { position: sticky; z-index: 2; top: 0; background: #fff; box-shadow: 0 1px #e7eeea; }
+.media-composition-list .record-actions { min-width: 112px; }
 .compact {
   padding: 7px 10px;
   font-size: 11px;

@@ -602,7 +602,7 @@ function HormoneMultiSelect({ value, onChange }) {
     <details className="multi-select">
       <summary>
         {selected.length
-          ? `${selected.length} selected`
+          ? selected.map((option) => quantity(option) ? `${option} ${quantity(option)} mg/L` : option).join(", ")
           : "Select one or more hormones"}
       </summary>
       <div className="multi-select-menu">
@@ -852,6 +852,17 @@ function MediaCompositionPage() {
     setForm(initial);
     setError("");
   }
+  async function remove(item) {
+    if (!confirm(`Delete media composition ${item.code}?`)) return;
+    setError("");
+    try {
+      await api.delete(`/media/${item.id}`);
+      if (editingId === item.id) cancelEdit();
+      await load();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "This media composition cannot be deleted because it is already used by bottles or laboratory records.");
+    }
+  }
   return (
     <>
       <header>
@@ -863,7 +874,7 @@ function MediaCompositionPage() {
         </p>
       </header>
       <section className="split">
-        <form className="panel form" onSubmit={save}>
+        <form className="panel form media-composition-form" onSubmit={save}>
           <h2>{editingId ? "Edit media composition" : "Add media composition"}</h2>
           {error && <div className="error">{error}</div>}
           <label>
@@ -912,14 +923,14 @@ function MediaCompositionPage() {
           <button>{editingId ? "Update media" : "Save media"}</button>
           {editingId && <button type="button" className="secondary" onClick={cancelEdit}>Cancel editing</button>}
         </form>
-        <section className="panel table-wrap">
+        <section className="panel table-wrap media-composition-list">
           <table>
             <thead>
               <tr>
                 <th>Code / recipe</th>
                 <th>Hormones</th>
                 <th>Available bottles</th>
-                <th>Action</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -933,7 +944,7 @@ function MediaCompositionPage() {
                   <td>
                     <b>{item.availableBottles}</b>
                   </td>
-                  <td><button type="button" className="secondary compact" onClick={() => edit(item)}><Pencil size={14} /> Edit</button></td>
+                  <td><div className="record-actions"><button type="button" className="secondary compact" onClick={() => edit(item)}><Pencil size={14} /> Edit</button><button type="button" className="icon danger" aria-label={`Delete ${item.code}`} onClick={() => remove(item)}><Trash2 size={16} /></button></div></td>
                 </tr>
               ))}
             </tbody>
