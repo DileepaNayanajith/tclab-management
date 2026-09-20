@@ -1305,6 +1305,16 @@ function SubculturePage({ user, sessionLaminaFlow }) {
     [saving, setSaving] = useState(false),
     [error, setError] = useState("");
   const parentBarcodeInput = useRef(null);
+  function resetSubcultureEntry(preserveCreated = false) {
+    setScan(null);
+    setParentBarcode("");
+    setMediaId("");
+    setLines([{ ...clearedLine }]);
+    setSelectedForPrint([]);
+    setError("");
+    if (!preserveCreated) setCreated([]);
+    window.setTimeout(() => parentBarcodeInput.current?.focus(), 0);
+  }
   async function load() {
     const [records, lookups] = await Promise.all([
       api.get("/subcultures"),
@@ -1335,15 +1345,15 @@ function SubculturePage({ user, sessionLaminaFlow }) {
         };
         const message =
           statusMessages[data.status] || "This bottle is not available for subculture.";
-        setScan(null);
-        setError(message);
         window.alert(message);
+        resetSubcultureEntry();
         return;
       }
       setScan(data);
     } catch (e) {
-      setScan(null);
-      setError(e.response?.data?.message || "Barcode not found.");
+      const message = e.response?.data?.message || "Barcode not found.";
+      window.alert(message);
+      resetSubcultureEntry();
     }
   }
   function updateLine(index, key, value) {
@@ -1365,13 +1375,8 @@ function SubculturePage({ user, sessionLaminaFlow }) {
         technicianUsername,
       });
       setCreated(data);
-      setScan(null);
-      setParentBarcode("");
-      setMediaId("");
-      setLines([{ ...clearedLine }]);
-      setSelectedForPrint([]);
+      resetSubcultureEntry(true);
       await load();
-      window.setTimeout(() => parentBarcodeInput.current?.focus(), 0);
     } catch (e) {
       const message =
         e.response?.data?.message ||
@@ -1380,6 +1385,7 @@ function SubculturePage({ user, sessionLaminaFlow }) {
           : "Could not reach the server. Check the internet connection and try again.");
       setError(message);
       window.alert(message);
+      resetSubcultureEntry();
     } finally {
       setSaving(false);
     }
@@ -1648,6 +1654,15 @@ function DiscardPage({ user }) {
     [otherReason, setOtherReason] = useState(""),
     [scan, setScan] = useState(null),
     [error, setError] = useState("");
+  const discardBarcodeInput = useRef(null);
+  function resetDiscardEntry() {
+    setBarcode("");
+    setSelectedReasons([]);
+    setOtherReason("");
+    setScan(null);
+    setError("");
+    window.setTimeout(() => discardBarcodeInput.current?.focus(), 0);
+  }
   async function load() {
     const [records, lookups] = await Promise.all([
       api.get("/discards"),
@@ -1665,10 +1680,22 @@ function DiscardPage({ user }) {
       const { data } = await api.get(
         `/workflow/scan/${encodeURIComponent(barcode)}`,
       );
+      if (data.status !== "ACTIVE") {
+        const statusMessages = {
+          USED: "This bottle has already been subcultured and cannot be discarded as an active bottle.",
+          DISCARDED: "This bottle has already been discarded.",
+          EXITED: "The plants in this bottle have already left the laboratory.",
+        };
+        window.alert(
+          statusMessages[data.status] || "This bottle is not available for discard.",
+        );
+        resetDiscardEntry();
+        return;
+      }
       setScan(data);
     } catch (e) {
-      setScan(null);
-      setError(e.response?.data?.message || "Barcode not found.");
+      window.alert(e.response?.data?.message || "Barcode not found.");
+      resetDiscardEntry();
     }
   }
   async function save(e) {
@@ -1684,13 +1711,11 @@ function DiscardPage({ user }) {
     }
     try {
       await api.post("/discards", { barcode, reason });
-      setBarcode("");
-      setSelectedReasons([]);
-      setOtherReason("");
-      setScan(null);
+      resetDiscardEntry();
       await load();
     } catch (e) {
-      setError(e.response?.data?.message || "Could not record discard.");
+      window.alert(e.response?.data?.message || "Could not record discard.");
+      resetDiscardEntry();
     }
   }
   const admin = user.role === "ADMIN";
@@ -1716,9 +1741,14 @@ function DiscardPage({ user }) {
           <label>
             Scan/read bottle barcode
             <input
+              ref={discardBarcodeInput}
               list="discard-barcodes"
               value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
+              onChange={(e) => {
+                setBarcode(e.target.value);
+                setScan(null);
+                setError("");
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
