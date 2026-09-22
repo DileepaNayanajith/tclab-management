@@ -76,8 +76,8 @@ function currentIsoDate() {
 }
 
 function Login({ onLogin }) {
-  const [username, setUsername] = useState("admin"),
-    [password, setPassword] = useState("ChangeMe123!"),
+  const [username, setUsername] = useState(""),
+    [password, setPassword] = useState(""),
     [error, setError] = useState("");
   async function submit(e) {
     e.preventDefault();
@@ -88,12 +88,13 @@ function Login({ onLogin }) {
       sessionStorage.setItem("labAuth", token);
       onLogin(data);
     } catch {
+      delete api.defaults.headers.common.Authorization;
       setError("Username or password is incorrect.");
     }
   }
   return (
     <main className="login">
-      <form className="login-card" onSubmit={submit}>
+      <form className="login-card" onSubmit={submit} autoComplete="off">
         <div className="brand-mark">
           <Leaf />
         </div>
@@ -105,6 +106,8 @@ function Login({ onLogin }) {
           Username
           <input
             value={username}
+            autoComplete="off"
+            required
             onChange={(e) => setUsername(e.target.value)}
           />
         </label>
@@ -113,11 +116,12 @@ function Login({ onLogin }) {
           <input
             type="password"
             value={password}
+            autoComplete="off"
+            required
             onChange={(e) => setPassword(e.target.value)}
           />
         </label>
         <button>Sign in</button>
-        <small>Development login is pre-filled for the first run.</small>
       </form>
     </main>
   );
