@@ -5,7 +5,6 @@ import com.naturalfoliage.lab.model.User;
 import com.naturalfoliage.lab.repository.UserRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,7 +25,7 @@ public class UserController {
     }
 
     public record UserRequest(@NotBlank String employeeId, @NotBlank String fullName,
-        @NotBlank String username, @Size(min = 8) String password,
+        @NotBlank String username, String password,
         Role role, String labSection, boolean active, Set<String> permissions) {}
 
     public record UserResponse(Long id, String employeeId, String fullName, String username,
@@ -59,8 +58,21 @@ public class UserController {
     @PutMapping("/{id}")
     public UserResponse update(@PathVariable Long id, @Valid @RequestBody UserRequest input) {
         var user = users.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        users.findByUsername(input.username().trim())
+            .filter(existing -> !existing.getId().equals(id))
+            .ifPresent(existing -> { throw new IllegalStateException("Username already exists"); });
         apply(user, input, false);
         return UserResponse.from(users.save(user));
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        var user = users.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if ("admin".equalsIgnoreCase(user.getUsername())) {
+            throw new IllegalStateException("The main admin account cannot be deleted");
+        }
+        users.delete(user);
     }
 
     @PatchMapping("/{id}/status")
@@ -83,6 +95,9 @@ public class UserController {
     private void apply(User user, UserRequest input, boolean passwordRequired) {
         if (passwordRequired && (input.password() == null || input.password().isBlank())) {
             throw new IllegalArgumentException("Password is required");
+        }
+        if (input.password() != null && !input.password().isBlank() && input.password().length() < 8) {
+            throw new IllegalArgumentException("Password must contain at least 8 characters");
         }
         user.setEmployeeId(input.employeeId().trim());
         user.setFullName(input.fullName().trim());

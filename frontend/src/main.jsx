@@ -2364,6 +2364,7 @@ function StaffPage() {
     fullName: "",
     username: "",
     password: "",
+    confirmPassword: "",
     role: "TECHNICIAN",
     labSection: "Subculture",
     active: true,
@@ -2371,6 +2372,7 @@ function StaffPage() {
   };
   const [staff, setStaff] = useState([]),
     [form, setForm] = useState(initial),
+    [editingId, setEditingId] = useState(null),
     [error, setError] = useState("");
   const load = () => api.get("/users").then((r) => setStaff(r.data));
   useEffect(() => {
@@ -2379,12 +2381,52 @@ function StaffPage() {
   async function save(e) {
     e.preventDefault();
     setError("");
+    if (form.password !== form.confirmPassword) {
+      setError("Password and confirm password do not match.");
+      return;
+    }
+    if (!editingId && !form.password) {
+      setError("Password is required.");
+      return;
+    }
     try {
-      await api.post("/users", form);
-      setForm(initial);
-      load();
+      const { confirmPassword: _confirmPassword, ...payload } = form;
+      if (editingId) await api.put(`/users/${editingId}`, payload);
+      else await api.post("/users", payload);
+      resetForm();
+      await load();
     } catch (e) {
-      setError(e.response?.data?.message || "Could not create staff account.");
+      setError(e.response?.data?.message || `Could not ${editingId ? "update" : "create"} staff account.`);
+    }
+  }
+  function resetForm() {
+    setForm({ ...initial, permissions: [...initial.permissions] });
+    setEditingId(null);
+    setError("");
+  }
+  function edit(person) {
+    setEditingId(person.id);
+    setForm({
+      employeeId: person.employeeId || "",
+      fullName: person.fullName || "",
+      username: person.username || "",
+      password: "",
+      confirmPassword: "",
+      role: person.role || "TECHNICIAN",
+      labSection: person.labSection || "Subculture",
+      active: person.active,
+      permissions: [...(person.permissions || [])],
+    });
+    setError("");
+  }
+  async function remove(person) {
+    if (!window.confirm(`Delete ${person.fullName}'s staff account?`)) return;
+    try {
+      await api.delete(`/users/${person.id}`);
+      if (editingId === person.id) resetForm();
+      await load();
+    } catch (e) {
+      setError(e.response?.data?.message || "Could not delete staff account.");
     }
   }
   async function toggle(person) {
@@ -2445,8 +2487,8 @@ function StaffPage() {
         </p>
       </header>
       <section className="split staff-layout">
-        <form className="panel form" onSubmit={save}>
-          <h2>Create staff account</h2>
+        <form className="panel form staff-form-panel" onSubmit={save}>
+          <h2>{editingId ? "Edit staff account" : "Create staff account"}</h2>
           {error && <div className="error">{error}</div>}
           <label>
             Employee ID
@@ -2473,13 +2515,23 @@ function StaffPage() {
             />
           </label>
           <label>
-            Temporary password
+            Password {editingId && <small className="field-hint">(leave blank to keep current password)</small>}
             <input
               type="password"
               minLength="8"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
+              required={!editingId}
+            />
+          </label>
+          <label>
+            Confirm password
+            <input
+              type="password"
+              minLength="8"
+              value={form.confirmPassword}
+              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+              required={!editingId || Boolean(form.password)}
             />
           </label>
           <label>
@@ -2523,9 +2575,12 @@ function StaffPage() {
               </div>
             </fieldset>
           )}
-          <button>Create account</button>
+          <div className="staff-form-actions">
+            <button>{editingId ? "Save changes" : "Create account"}</button>
+            {editingId && <button type="button" className="secondary" onClick={resetForm}>Cancel</button>}
+          </div>
         </form>
-        <section className="panel table-wrap">
+        <section className="panel table-wrap staff-list-panel">
           <table>
             <thead>
               <tr>
@@ -2534,7 +2589,7 @@ function StaffPage() {
                 <th>Role / section</th>
                 <th>Access</th>
                 <th>Status</th>
-                <th></th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -2581,12 +2636,13 @@ function StaffPage() {
                     </span>
                   </td>
                   <td>
-                    <button
-                      className="secondary compact"
-                      onClick={() => toggle(person)}
-                    >
-                      {person.active ? "Deactivate" : "Activate"}
-                    </button>
+                    <div className="staff-row-actions">
+                      <button type="button" className="icon edit" aria-label={`Edit ${person.fullName}`} title="Edit" onClick={() => edit(person)}><Pencil size={16} /></button>
+                      {person.username.toLowerCase() !== "admin" && <button type="button" className="icon danger" aria-label={`Delete ${person.fullName}`} title="Delete" onClick={() => remove(person)}><Trash2 size={16} /></button>}
+                      <button type="button" className="secondary compact" onClick={() => toggle(person)}>
+                        {person.active ? "Deactivate" : "Activate"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

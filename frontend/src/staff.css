@@ -17,7 +17,34 @@ select {
 }
 .staff-layout {
   grid-template-columns: 360px 1fr;
+  align-items: start;
 }
+.staff-form-panel,
+.staff-list-panel {
+  height: 600px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.staff-list-panel { overflow-x: auto; }
+.staff-list-panel thead th {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  background: #fff;
+  box-shadow: 0 1px #e7eeea;
+}
+.staff-form-panel::-webkit-scrollbar,
+.staff-list-panel::-webkit-scrollbar { width: 10px; height: 10px; }
+.staff-form-panel::-webkit-scrollbar-track,
+.staff-list-panel::-webkit-scrollbar-track { border-radius: 999px; background: #e7efeb; }
+.staff-form-panel::-webkit-scrollbar-thumb,
+.staff-list-panel::-webkit-scrollbar-thumb { border: 2px solid #e7efeb; border-radius: 999px; background: #5c8b74; }
+.staff-form-actions,
+.staff-row-actions { display: flex; align-items: center; gap: 7px; }
+.staff-form-actions > button:first-child { flex: 1; }
+.staff-row-actions { min-width: 174px; }
+.field-hint { color: #7a8982; font-weight: 500; }
 .secondary {
   background: #eef4f1;
   color: #315e49;
@@ -155,6 +182,8 @@ select {
   .staff-layout {
     grid-template-columns: 1fr;
   }
+  .staff-form-panel,
+  .staff-list-panel { height: 55vh; min-height: 360px; }
 }
 
 .multi-select {
