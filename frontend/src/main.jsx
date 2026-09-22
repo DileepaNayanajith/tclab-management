@@ -176,7 +176,7 @@ function OperationalTables({ details }) {
         <div className="table-heading">
           <div>
             <p className="eyebrow">LIVE INVENTORY</p>
-            <h2>Available subculture plants</h2>
+            <h2>Available plants</h2>
           </div>
           <span className="count-pill">
             {details.availablePlants.length} varieties
@@ -549,24 +549,6 @@ function Dashboard({ user }) {
           </article>
         ))}
       </section>
-      {tech && (
-        <section className="panel technician-welcome">
-          <div>
-            <span className="badge">ACTIVE TECHNICIAN</span>
-            <h2>Your assigned section: {user.labSection}</h2>
-            <p>
-              Use the menu to record and review work for your laboratory
-              section. Every saved operation will be linked to your profile.
-            </p>
-          </div>
-          <div className="employee-card">
-            <small>EMPLOYEE ID</small>
-            <strong>{user.employeeId}</strong>
-            <small>ROLE</small>
-            <strong>{user.role}</strong>
-          </div>
-        </section>
-      )}
       <OperationalTables details={details} />
     </>
   );
