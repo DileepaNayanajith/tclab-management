@@ -2644,6 +2644,68 @@ function WorkspaceClock({ activePage, user }) {
   return <section className="workspace-clock"><div><small>CURRENT SECTION</small><b>{activePage}</b><span>{user.fullName} · {user.role}</span></div><time dateTime={now.toISOString()}><small>LOCAL DATE & TIME</small><b>{new Intl.DateTimeFormat("en-LK", { dateStyle: "full", timeStyle: "medium" }).format(now)}</b></time></section>;
 }
 
+function OperationalCleanupPage() {
+  const [preview, setPreview] = useState(null);
+  const [backupReady, setBackupReady] = useState(false);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const refresh = () => api.get("/admin/data/operational-preview").then(({ data }) => setPreview(data));
+  useEffect(() => { refresh().catch(() => setMessage("Could not load cleanup preview.")); }, []);
+  const labels = ["sales", "discards", "plantExits", "subcultures", "initiations", "mediaPreparations", "prices"];
+  async function backup() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const paths = ["plants", "media", "users", "media-preparations", "mother-bottles", "subcultures", "discards", "plant-exits", "price-list", "sales"];
+      const results = await Promise.all(paths.map((path) => api.get(`/${path}`)));
+      const data = Object.fromEntries(paths.map((path, index) => [path, results[index].data]));
+      const latest = (await api.get("/admin/data/operational-preview")).data;
+      const match = labels.every((key, index) => latest[key] === data[["sales", "discards", "plant-exits", "subcultures", "mother-bottles", "media-preparations", "price-list"][index]].length);
+      if (!match || latest.preservedPlants !== data.plants.length || latest.preservedMediaCompositions !== data.media.length || latest.preservedStaffAccounts !== data.users.length) {
+        throw new Error("Records changed during backup. Please try again.");
+      }
+      const document = { exportedAt: new Date().toISOString(), preview: latest, data };
+      const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }));
+      const link = window.document.createElement("a");
+      link.href = url;
+      link.download = `natural-foliage-before-cleanup-${new Date().toISOString().replaceAll(":", "-")}.json`;
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setPreview(latest);
+      setBackupReady(true);
+      setMessage("Backup download started. Verify the file before clearing data.");
+    } catch (error) {
+      setBackupReady(false);
+      setMessage(error.message || "Backup failed.");
+    } finally { setBusy(false); }
+  }
+  async function clear() {
+    if (!backupReady || !preview || busy) return;
+    if (!window.confirm("Permanently clear sales, discards, exits, subcultures, initiations, media preparations and prices? Plant varieties, media compositions and staff accounts will remain.")) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const expectedCounts = Object.fromEntries(labels.map((key) => [key, preview[key]]));
+      await api.delete("/admin/data/operational", { data: { confirmation: "CLEAR OPERATIONAL DATA", expectedCounts } });
+      await refresh();
+      setMessage("Operational records cleared. Plant varieties, media compositions and staff accounts retained.");
+      setBackupReady(false);
+    } catch (error) {
+      setMessage(error.response?.data?.message || "Cleanup failed. No data should have been cleared.");
+    } finally { setBusy(false); }
+  }
+  return <main className="login"><section className="login-card" style={{ width: "min(680px, 94vw)" }}>
+    <h1>One-time operational cleanup</h1>
+    <p>Preserve plant varieties, media compositions and all staff accounts. Clear only operational records and reset media bottle stock to zero.</p>
+    {preview && <ul>{Object.entries(preview).map(([key, value]) => <li key={key}>{key}: {value}</li>)}</ul>}
+    {message && <p role="status">{message}</p>}
+    <button type="button" disabled={busy || !preview} onClick={backup}>Download full data backup</button>
+    <button type="button" disabled={busy || !backupReady} onClick={clear} style={{ marginTop: 12, background: "#a32525" }}>Clear operational data</button>
+  </section></main>;
+}
+
 function App() {
   const token = sessionStorage.getItem("labAuth");
   if (token) api.defaults.headers.common.Authorization = `Basic ${token}`;
@@ -2663,6 +2725,9 @@ function App() {
   }, []);
   if (loading) return <div className="loading">Loading…</div>;
   if (!user) return <Login onLogin={setUser} />;
+  if (user.role === "ADMIN" && new URLSearchParams(window.location.search).get("cleanup") === "1") {
+    return <OperationalCleanupPage />;
+  }
   const allowed = new Set(user.permissions || []);
   if (
     user.role === "TECHNICIAN" &&

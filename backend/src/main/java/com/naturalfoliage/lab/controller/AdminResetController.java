@@ -37,6 +37,51 @@ public class AdminResetController {
     }
 
     public record ResetRequest(String confirmation) {}
+    public record OperationalResetRequest(String confirmation, Map<String, Long> expectedCounts) {}
+
+    private Map<String, Long> operationalCounts() {
+        var counts = new LinkedHashMap<String, Long>();
+        counts.put("sales", sales.count());
+        counts.put("discards", discards.count());
+        counts.put("plantExits", exits.count());
+        counts.put("subcultures", subcultures.count());
+        counts.put("initiations", mothers.count());
+        counts.put("mediaPreparations", preparations.count());
+        counts.put("prices", prices.count());
+        return counts;
+    }
+
+    @GetMapping("/operational-preview")
+    public Map<String, Long> operationalPreview() {
+        var counts = operationalCounts();
+        counts.put("preservedPlants", plants.count());
+        counts.put("preservedMediaCompositions", media.count());
+        counts.put("preservedStaffAccounts", users.count());
+        return counts;
+    }
+
+    @DeleteMapping("/operational")
+    @Transactional
+    public Map<String, Long> clearOperationalData(@RequestBody OperationalResetRequest input) {
+        if (input == null || !"CLEAR OPERATIONAL DATA".equals(input.confirmation())) {
+            throw new IllegalArgumentException("Operational cleanup confirmation phrase did not match");
+        }
+        var counts = operationalCounts();
+        if (!counts.equals(input.expectedCounts())) {
+            throw new IllegalStateException("Operational data changed since preview; cleanup cancelled");
+        }
+        sales.deleteAll();
+        discards.deleteAllInBatch();
+        exits.deleteAllInBatch();
+        subcultures.deleteAllInBatch();
+        mothers.deleteAllInBatch();
+        preparations.deleteAllInBatch();
+        prices.deleteAllInBatch();
+        var compositions = media.findAll();
+        compositions.forEach(item -> item.setAvailableBottles(0));
+        media.saveAllAndFlush(compositions);
+        return counts;
+    }
 
     @DeleteMapping
     @Transactional
