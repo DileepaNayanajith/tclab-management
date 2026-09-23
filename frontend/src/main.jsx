@@ -2449,25 +2449,6 @@ function StaffPage() {
       setError(e.response?.data?.message || "Could not change user access.");
     }
   }
-  async function resetAllData() {
-    const confirmation = window.prompt(
-      "This permanently deletes every record and staff account except the main admin. Type DELETE ALL LAB DATA to continue.",
-    );
-    if (confirmation !== "DELETE ALL LAB DATA") return;
-    try {
-      const { data } = await api.delete("/admin/data", {
-        data: { confirmation },
-      });
-      window.alert(
-        `Lab data cleared successfully. ${Object.values(data).reduce((sum, count) => sum + count, 0)} records removed.`,
-      );
-      setForm(initial);
-      setError("");
-      load();
-    } catch (e) {
-      window.alert(e.response?.data?.message || "Could not clear lab data.");
-    }
-  }
   function changeAccess(permission) {
     setForm({
       ...form,
@@ -2649,13 +2630,6 @@ function StaffPage() {
             </tbody>
           </table>
         </section>
-      </section>
-      <section className="panel danger-zone">
-        <div>
-          <h2>Production data reset</h2>
-          <p className="muted">Permanently delete every lab record and staff account except the main admin account.</p>
-        </div>
-        <button type="button" className="danger" onClick={resetAllData}>Clear all lab data</button>
       </section>
     </>
   );
