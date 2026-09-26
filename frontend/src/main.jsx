@@ -2016,6 +2016,8 @@ function PlantExitPage({ user }) {
 }
 
 function WorkflowPage({ type, user }) {
+  const initiationListRef = useRef(null);
+  const plantCountRef = useRef(null);
   const paths = {
     "Plant Initiation": "/mother-bottles",
     Subcultures: "/subcultures",
@@ -2051,25 +2053,37 @@ function WorkflowPage({ type, user }) {
       api.get(paths[type]),
       api.get("/workflow/options"),
     ]);
-    setRows(records.data);
+    setRows(type === "Plant Initiation"
+      ? [...records.data].sort((a, b) => a.id - b.id)
+      : records.data);
     setOptions(lookups.data);
   }
   useEffect(() => {
     load();
   }, [type]);
   useEffect(() => {
+    if (type === "Plant Initiation" && initiationListRef.current) {
+      initiationListRef.current.scrollTop = initiationListRef.current.scrollHeight;
+    }
+  }, [type, rows]);
+  useEffect(() => {
     if (type === "Plant Initiation" && form.plantId)
       api
         .get(`/mother-bottles/next-barcode?plantId=${form.plantId}`)
         .then((r) => setNextBarcode(r.data));
-  }, [type, form.plantId]);
+  }, [type, form.plantId, rows]);
   async function save(e) {
     e.preventDefault();
     setError("");
     try {
       const { data } = await api.post(paths[type], form);
-      if (type === "Plant Initiation") setSelectedForPrint([data.id]);
-      setForm(initial);
+      if (type === "Plant Initiation") {
+        setSelectedForPrint([data.id]);
+        setForm((current) => ({ ...current, plantCount: "" }));
+        plantCountRef.current?.focus({ preventScroll: true });
+      } else {
+        setForm(initial);
+      }
       await load();
     } catch (e) {
       setError(e.response?.data?.message || "Could not save this entry.");
@@ -2173,6 +2187,7 @@ function WorkflowPage({ type, user }) {
               <label>
                 Number of plants
                 <input
+                  ref={plantCountRef}
                   type="number"
                   min="1"
                   value={form.plantCount}
@@ -2280,7 +2295,7 @@ function WorkflowPage({ type, user }) {
             {type === "Discards" ? "Save discard" : "Register entry"}
           </button>
         </form>
-        <section className={`panel table-wrap ${type === "Plant Initiation" ? "plant-initiation-list" : ""}`}>
+        <section ref={initiationListRef} className={`panel table-wrap ${type === "Plant Initiation" ? "plant-initiation-list" : ""}`}>
           {type === "Plant Initiation" && (
             <div className="line-head initiation-print-toolbar">
               <div>
