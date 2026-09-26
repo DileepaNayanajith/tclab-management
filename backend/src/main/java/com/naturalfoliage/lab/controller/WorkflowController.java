@@ -77,6 +77,14 @@ public class WorkflowController {
     }
 
     public record AvailablePlant(String plantCode, String plantName, int multiply, int rooting, int total) {}
+    public record DashboardMediaStock(Long id, String code, int availableBottles) {}
+
+    @GetMapping("/dashboard/media-stock") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DASHBOARD')")
+    List<DashboardMediaStock> dashboardMediaStock() {
+        return media.findAll().stream()
+            .map(item -> new DashboardMediaStock(item.getId(), item.getCode(), item.getAvailableBottles()))
+            .sorted(Comparator.comparing(DashboardMediaStock::code)).toList();
+    }
     public record OldCulture(int subcultureWeek, String plantCode, String variety,
         int bottles, int totalPlants, long ageWeeks, List<String> barcodes) {}
     public record DashboardDetails(List<AvailablePlant> availablePlants, List<OldCulture> oldCultures) {}

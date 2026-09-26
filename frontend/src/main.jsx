@@ -442,27 +442,24 @@ function AnalyticsPage() {
 function Dashboard({ user }) {
   const [details, setDetails] = useState({ availablePlants: [], oldCultures: [] }),
     [mediaStock, setMediaStock] = useState([]),
+    [detailsError, setDetailsError] = useState(""),
+    [mediaError, setMediaError] = useState(""),
+    [detailsLoaded, setDetailsLoaded] = useState(false),
+    [mediaLoaded, setMediaLoaded] = useState(false),
     [mediaExpanded, setMediaExpanded] = useState(false),
     [rootedExpanded, setRootedExpanded] = useState(false);
   useEffect(() => {
-    api.get("/dashboard/details").then((response) => setDetails(response.data));
+    api.get("/dashboard/details").then((response) => {
+      setDetails(response.data);
+      setDetailsLoaded(true);
+    }).catch(() => setDetailsError("Could not load dashboard plant details. Refresh or sign in again after your access has been updated."));
     async function loadMediaStock() {
       try {
-        let response;
-        try {
-          response = await api.get("/media/options");
-        } catch (requestError) {
-          if (
-            requestError.response?.status !== 404 &&
-            requestError.response?.status !== 405
-          ) {
-            throw requestError;
-          }
-          response = await api.get("/media");
-        }
+        const response = await api.get("/dashboard/media-stock");
         setMediaStock(response.data);
+        setMediaLoaded(true);
       } catch {
-        setMediaStock([]);
+        setMediaError("Could not load dashboard media stock. Refresh or sign in again after your access has been updated.");
       }
     }
     loadMediaStock();
@@ -486,9 +483,9 @@ function Dashboard({ user }) {
     0,
   );
   const cards = [
-    ["Available media bottles", availableMediaBottles, "media"],
-    ["Rooted plants", rootedTotal, "rooted"],
-    ["Total active plants / clumps", totalActivePlants, "plants-total"],
+    ["Available media bottles", mediaLoaded ? availableMediaBottles : null, "media"],
+    ["Rooted plants", detailsLoaded ? rootedTotal : null, "rooted"],
+    ["Total active plants / clumps", detailsLoaded ? totalActivePlants : null, "plants-total"],
   ];
   return (
     <>
@@ -528,7 +525,7 @@ function Dashboard({ user }) {
                 {mediaExpanded ? "Hide composition details" : "View composition details"}
               </small>
             )}
-            {c === "rooted" && (
+            {c === "rooted" && detailsLoaded && (
               <small className="sellable-summary">
                 Sellable 80%: <b>{sellableTotal}</b> · {rootedExpanded ? "Hide details" : "View details"}
               </small>
@@ -549,7 +546,9 @@ function Dashboard({ user }) {
           </article>
         ))}
       </section>
-      <OperationalTables details={details} />
+      {mediaError && <div className="error" role="alert">{mediaError}</div>}
+      {detailsError && <div className="error" role="alert">{detailsError}</div>}
+      {detailsLoaded && <OperationalTables details={details} />}
     </>
   );
 }
