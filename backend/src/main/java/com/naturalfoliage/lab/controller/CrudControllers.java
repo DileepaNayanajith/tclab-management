@@ -122,6 +122,16 @@ class MotherBottleController {
     record MotherRequest(@NotNull Long plantId, @NotNull Long mediaId,
         @Min(1) int plantCount, @Min(0) int cycle, String laminaFlow) {}
     @GetMapping List<MotherBottle> all() { return repository.findAll(); }
+    record PrintStatusRequest(@NotEmpty List<@NotNull Long> ids, boolean printed) {}
+    @PatchMapping("/print-status") @Transactional
+    List<MotherBottle> printStatus(@Valid @RequestBody PrintStatusRequest input) {
+        var ids = input.ids().stream().distinct().toList();
+        var bottles = repository.findAllById(ids);
+        if (bottles.size() != ids.size())
+            throw new IllegalArgumentException("A selected initiation no longer exists. Refresh and try again.");
+        bottles.forEach(bottle -> bottle.setPrinted(input.printed()));
+        return repository.saveAll(bottles);
+    }
     @PostMapping @ResponseStatus(HttpStatus.CREATED) MotherBottle create(@Valid @RequestBody MotherRequest input, Authentication auth) {
         var plant = plants.findById(input.plantId()).orElseThrow(() -> new IllegalArgumentException("Plant not found"));
         var bottle = new MotherBottle(); bottle.setBarcode(nextBarcode(plant.getCode()));

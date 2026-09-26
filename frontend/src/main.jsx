@@ -2047,6 +2047,8 @@ function WorkflowPage({ type, user }) {
     [form, setForm] = useState(initial),
     [nextBarcode, setNextBarcode] = useState("Select a plant to generate"),
     [selectedForPrint, setSelectedForPrint] = useState([]),
+    [pendingPrintIds, setPendingPrintIds] = useState([]),
+    [savingPrintStatus, setSavingPrintStatus] = useState(false),
     [error, setError] = useState("");
   async function load() {
     const [records, lookups] = await Promise.all([
@@ -2105,9 +2107,10 @@ function WorkflowPage({ type, user }) {
     );
   }
   function printInitiationLabels(ids) {
-    const labels = ids
-      .map((id) => document.querySelector(`[data-initiation-label-id="${id}"]`)?.outerHTML)
-      .filter(Boolean);
+    if (pendingPrintIds.length) return;
+    const printable = ids.map((id) => ({ id, html: document.querySelector(`[data-initiation-label-id="${id}"]`)?.outerHTML }))
+      .filter((item) => item.html);
+    const labels = printable.map((item) => item.html);
     if (!labels.length) return;
     const frame = document.createElement("iframe");
     frame.setAttribute("title", "Plant initiation barcode labels");
@@ -2127,11 +2130,26 @@ function WorkflowPage({ type, user }) {
     printDocument.close();
     frame.contentWindow.focus();
     frame.contentWindow.print();
+    setSelectedForPrint([]);
+    setPendingPrintIds(printable.map((item) => item.id));
     setTimeout(() => frame.remove(), 1500);
   }
   function printInitiation(id) {
-    setSelectedForPrint([id]);
     printInitiationLabels([id]);
+  }
+  async function confirmInitiationPrint() {
+    setSavingPrintStatus(true);
+    setError("");
+    try {
+      const { data } = await api.patch("/mother-bottles/print-status", { ids: pendingPrintIds, printed: true });
+      const updated = new Map(data.map((item) => [item.id, item]));
+      setRows((current) => current.map((item) => updated.get(item.id) || item));
+      setPendingPrintIds([]);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Could not save printed status. Please retry.");
+    } finally {
+      setSavingPrintStatus(false);
+    }
   }
   const select = (key, label, items) => (
     <label>
@@ -2302,9 +2320,16 @@ function WorkflowPage({ type, user }) {
                 <b>30 mm × 10 mm barcode labels</b>
                 <p>Select past initiations or print one label directly.</p>
               </div>
-              <button type="button" disabled={!selectedForPrint.length} onClick={() => printInitiationLabels(selectedForPrint)}>
+              <button type="button" disabled={!selectedForPrint.length || pendingPrintIds.length > 0} onClick={() => printInitiationLabels(selectedForPrint)}>
                 Print selected ({selectedForPrint.length})
               </button>
+            </div>
+          )}
+          {type === "Plant Initiation" && pendingPrintIds.length > 0 && (
+            <div className="stock-status" role="status" style={{ position: "sticky", top: 0, zIndex: 3 }}>
+              <p>Did all {pendingPrintIds.length} labels print successfully? Confirm only after checking the labels.</p>
+              <button type="button" disabled={savingPrintStatus} onClick={confirmInitiationPrint}>Yes, mark as printed</button>{" "}
+              <button type="button" className="secondary" disabled={savingPrintStatus} onClick={() => setPendingPrintIds([])}>Cancelled / not all printed</button>
             </div>
           )}
           <table>
@@ -2330,8 +2355,9 @@ function WorkflowPage({ type, user }) {
                           checked={selectedForPrint.includes(r.id)}
                           onChange={() => toggleInitiationPrint(r.id)}
                         />
-                        <button type="button" className="secondary compact" onClick={() => printInitiation(r.id)}>Print one</button>
+                        <button type="button" className="secondary compact" disabled={pendingPrintIds.length > 0} onClick={() => printInitiation(r.id)}>{r.printed ? "Reprint" : "Print one"}</button>
                       </div>
+                      <small>{r.printed ? "✓ Printed" : "Not printed"}</small>
                     </td>
                   )}
                   <td>
