@@ -2024,7 +2024,7 @@ function WorkflowPage({ type, user }) {
   };
   const initial =
     type === "Plant Initiation"
-      ? { plantId: "", mediaId: "", plantCount: "", cycle: 0, laminaFlow: "" }
+      ? { plantId: "", mediaId: "", plantCount: "", bottleCount: 1, cycle: 0, laminaFlow: "" }
       : type === "Subcultures"
         ? {
             barcode: "",
@@ -2077,9 +2077,15 @@ function WorkflowPage({ type, user }) {
     e.preventDefault();
     setError("");
     try {
-      const { data } = await api.post(paths[type], form);
+      const { data } = type === "Plant Initiation"
+        ? await api.post("/mother-bottles/batch", {
+            ...form,
+            plantCount: Number(form.plantCount),
+            bottleCount: Number(form.bottleCount),
+          })
+        : await api.post(paths[type], form);
       if (type === "Plant Initiation") {
-        setSelectedForPrint([data.id]);
+        setSelectedForPrint(data.map((bottle) => bottle.id));
         setForm((current) => ({ ...current, plantCount: "" }));
         plantCountRef.current?.focus({ preventScroll: true });
       } else {
@@ -2199,10 +2205,11 @@ function WorkflowPage({ type, user }) {
               <div className="barcode-preview">
                 <small>AUTOMATIC BARCODE</small>
                 <strong>{nextBarcode}</strong>
+                <small>First bottle barcode · each additional bottle gets its own barcode</small>
               </div>
               {select("mediaId", "Media composition", options.media)}
               <label>
-                Number of plants
+                Number of plants per bottle
                 <input
                   ref={plantCountRef}
                   type="number"
@@ -2211,6 +2218,18 @@ function WorkflowPage({ type, user }) {
                   onChange={(e) =>
                     setForm({ ...form, plantCount: e.target.value })
                   }
+                  required
+                />
+              </label>
+              <label>
+                Number of bottles
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  step="1"
+                  value={form.bottleCount}
+                  onChange={(e) => setForm({ ...form, bottleCount: e.target.value })}
                   required
                 />
               </label>

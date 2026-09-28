@@ -121,6 +121,9 @@ class MotherBottleController {
     MotherBottleController(MotherBottleRepository repository, PlantRepository plants, MediaCompositionRepository media, SubcultureRepository subcultures) { this.repository = repository; this.plants = plants; this.media = media; this.subcultures = subcultures; }
     record MotherRequest(@NotNull Long plantId, @NotNull Long mediaId,
         @Min(1) int plantCount, @Min(0) int cycle, String laminaFlow) {}
+    record MotherBatchRequest(@NotNull Long plantId, @NotNull Long mediaId,
+        @Min(1) int plantCount, @Min(0) int cycle, String laminaFlow,
+        @Min(1) @Max(100) int bottleCount) {}
     @GetMapping List<MotherBottle> all() { return repository.findAll(); }
     record PrintStatusRequest(@NotEmpty List<@NotNull Long> ids, boolean printed) {}
     @PatchMapping("/print-status") @Transactional
@@ -134,12 +137,38 @@ class MotherBottleController {
     }
     @PostMapping @ResponseStatus(HttpStatus.CREATED) MotherBottle create(@Valid @RequestBody MotherRequest input, Authentication auth) {
         var plant = plants.findById(input.plantId()).orElseThrow(() -> new IllegalArgumentException("Plant not found"));
-        var bottle = new MotherBottle(); bottle.setBarcode(nextBarcode(plant.getCode()));
-        bottle.setPlant(plant);
-        bottle.setMedia(media.findById(input.mediaId()).orElseThrow(() -> new IllegalArgumentException("Media not found")));
-        bottle.setPlantCount(input.plantCount()); bottle.setCycle(input.cycle());
+        var composition = media.findById(input.mediaId()).orElseThrow(() -> new IllegalArgumentException("Media not found"));
+        return repository.save(newBottle(plant, composition, input.plantCount(), input.cycle(), input.laminaFlow(), auth.getName(), nextBarcode(plant.getCode())));
+    }
+
+    @PostMapping("/batch") @ResponseStatus(HttpStatus.CREATED) @Transactional
+    List<MotherBottle> createBatch(@Valid @RequestBody MotherBatchRequest input, Authentication auth) {
+        var plant = plants.findById(input.plantId()).orElseThrow(() -> new IllegalArgumentException("Plant not found"));
+        var composition = media.findById(input.mediaId()).orElseThrow(() -> new IllegalArgumentException("Media not found"));
+        var created = new java.util.ArrayList<MotherBottle>(input.bottleCount());
+        var reserved = new java.util.HashSet<String>();
+        var firstBarcode = nextBarcode(plant.getCode());
+        var prefix = firstBarcode.substring(0, firstBarcode.lastIndexOf('-') + 1);
+        int sequence = Integer.parseInt(firstBarcode.substring(prefix.length()));
+        for (int i = 0; i < input.bottleCount(); i++) {
+            String barcode;
+            do {
+                barcode = "%s%03d".formatted(prefix, sequence++);
+            } while (reserved.contains(barcode) || repository.findByBarcode(barcode).isPresent());
+            reserved.add(barcode);
+            created.add(newBottle(plant, composition, input.plantCount(), input.cycle(), input.laminaFlow(), auth.getName(), barcode));
+        }
+        return repository.saveAll(created);
+    }
+
+    private MotherBottle newBottle(Plant plant, MediaComposition composition, int plantCount,
+        int cycle, String laminaFlow, String technician, String barcode) {
+        var bottle = new MotherBottle();
+        bottle.setBarcode(barcode); bottle.setPlant(plant); bottle.setMedia(composition);
+        bottle.setPlantCount(plantCount); bottle.setCycle(cycle);
         bottle.setCultureWeek(LocalDate.now().get(WeekFields.ISO.weekOfWeekBasedYear()));
-        bottle.setLaminaFlow(input.laminaFlow()); bottle.setTechnician(auth.getName()); return repository.save(bottle);
+        bottle.setLaminaFlow(laminaFlow); bottle.setTechnician(technician);
+        return bottle;
     }
 
     @GetMapping("/next-barcode") String nextBarcodePreview(@RequestParam Long plantId) {
