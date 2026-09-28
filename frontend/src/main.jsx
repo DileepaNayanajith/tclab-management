@@ -2049,6 +2049,7 @@ function WorkflowPage({ type, user }) {
     [selectedForPrint, setSelectedForPrint] = useState([]),
     [pendingPrintIds, setPendingPrintIds] = useState([]),
     [savingPrintStatus, setSavingPrintStatus] = useState(false),
+    [printStatusError, setPrintStatusError] = useState(""),
     [error, setError] = useState("");
   async function load() {
     const [records, lookups] = await Promise.all([
@@ -2085,6 +2086,10 @@ function WorkflowPage({ type, user }) {
   }, [type, form.plantId, rows]);
   async function save(e) {
     e.preventDefault();
+    if (type === "Plant Initiation" && pendingPrintIds.length > 0) {
+      setError("Confirm the previous label print before registering another initiation.");
+      return;
+    }
     setError("");
     try {
       const { data } = type === "Plant Initiation"
@@ -2145,6 +2150,7 @@ function WorkflowPage({ type, user }) {
     printDocument.close();
     frame.contentWindow.focus();
     frame.contentWindow.print();
+    setPrintStatusError("");
     setSelectedForPrint([]);
     setPendingPrintIds(printable.map((item) => item.id));
     setTimeout(() => frame.remove(), 1500);
@@ -2154,17 +2160,22 @@ function WorkflowPage({ type, user }) {
   }
   async function confirmInitiationPrint() {
     setSavingPrintStatus(true);
-    setError("");
+    setPrintStatusError("");
     try {
       const { data } = await api.patch("/mother-bottles/print-status", { ids: pendingPrintIds, printed: true });
       const updated = new Map(data.map((item) => [item.id, item]));
       setRows((current) => current.map((item) => updated.get(item.id) || item));
       setPendingPrintIds([]);
     } catch (requestError) {
-      setError(requestError.response?.data?.message || "Could not save printed status. Please retry.");
+      setPrintStatusError(requestError.response?.data?.message || "Could not save printed status. Please retry.");
     } finally {
       setSavingPrintStatus(false);
     }
+  }
+  function cancelInitiationPrint() {
+    setSelectedForPrint((current) => [...new Set([...current, ...pendingPrintIds])]);
+    setPendingPrintIds([]);
+    setPrintStatusError("");
   }
   const select = (key, label, items) => (
     <label>
@@ -2185,6 +2196,19 @@ function WorkflowPage({ type, user }) {
   );
   return (
     <>
+      {type === "Plant Initiation" && pendingPrintIds.length > 0 && (
+        <div className="initiation-print-overlay">
+          <div className="initiation-print-dialog" role="dialog" aria-modal="true" aria-labelledby="initiation-print-title">
+            <h2 id="initiation-print-title">Confirm barcode labels</h2>
+            <p>Did all {pendingPrintIds.length} labels print successfully? Choose an option before registering another plant initiation.</p>
+            {printStatusError && <div className="error" role="alert">{printStatusError}</div>}
+            <div className="initiation-print-dialog-actions">
+              <button type="button" autoFocus disabled={savingPrintStatus} onClick={confirmInitiationPrint}>Yes, mark as printed</button>
+              <button type="button" className="secondary" disabled={savingPrintStatus} onClick={cancelInitiationPrint}>Not printed / retry later</button>
+            </div>
+          </div>
+        </div>
+      )}
       <header>
         <p className="eyebrow">LAB WORKFLOW</p>
         <h1>{type}</h1>
@@ -2194,7 +2218,7 @@ function WorkflowPage({ type, user }) {
         </p>
       </header>
       <section className="split workflow-layout">
-        <form className={`panel form ${type === "Plant Initiation" ? "plant-initiation-form" : ""}`} onSubmit={save}>
+        <form className={`panel form ${type === "Plant Initiation" ? "plant-initiation-form" : ""}`} onSubmit={save} inert={type === "Plant Initiation" && pendingPrintIds.length > 0}>
           <h2>
             {type === "Discards"
               ? "Record discard"
@@ -2351,13 +2375,6 @@ function WorkflowPage({ type, user }) {
               <button type="button" disabled={!selectedForPrint.length || pendingPrintIds.length > 0} onClick={() => printInitiationLabels(selectedForPrint)}>
                 Print selected ({selectedForPrint.length})
               </button>
-            </div>
-          )}
-          {type === "Plant Initiation" && pendingPrintIds.length > 0 && (
-            <div className="stock-status" role="status" style={{ position: "sticky", top: 0, zIndex: 3 }}>
-              <p>Did all {pendingPrintIds.length} labels print successfully? Confirm only after checking the labels.</p>
-              <button type="button" disabled={savingPrintStatus} onClick={confirmInitiationPrint}>Yes, mark as printed</button>{" "}
-              <button type="button" className="secondary" disabled={savingPrintStatus} onClick={() => setPendingPrintIds([])}>Cancelled / not all printed</button>
             </div>
           )}
           <table>
