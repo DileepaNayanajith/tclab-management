@@ -2017,6 +2017,7 @@ function PlantExitPage({ user }) {
 function WorkflowPage({ type, user }) {
   const initiationListRef = useRef(null);
   const plantCountRef = useRef(null);
+  const initialPrintSelectionLoaded = useRef(false);
   const paths = {
     "Plant Initiation": "/mother-bottles",
     Subcultures: "/subcultures",
@@ -2054,12 +2055,21 @@ function WorkflowPage({ type, user }) {
       api.get(paths[type]),
       api.get("/workflow/options"),
     ]);
-    setRows(type === "Plant Initiation"
-      ? [...records.data].sort((a, b) => a.id - b.id)
-      : records.data);
+    if (type === "Plant Initiation") {
+      const sorted = [...records.data].sort((a, b) => a.id - b.id);
+      setRows(sorted);
+      const existingIds = new Set(sorted.map((bottle) => bottle.id));
+      setSelectedForPrint((current) => initialPrintSelectionLoaded.current
+        ? current.filter((id) => existingIds.has(id))
+        : sorted.filter((bottle) => !bottle.printed).map((bottle) => bottle.id));
+      initialPrintSelectionLoaded.current = true;
+    } else {
+      setRows(records.data);
+    }
     setOptions(lookups.data);
   }
   useEffect(() => {
+    initialPrintSelectionLoaded.current = false;
     load();
   }, [type]);
   useEffect(() => {
@@ -2085,7 +2095,7 @@ function WorkflowPage({ type, user }) {
           })
         : await api.post(paths[type], form);
       if (type === "Plant Initiation") {
-        setSelectedForPrint(data.map((bottle) => bottle.id));
+        setSelectedForPrint((current) => [...new Set([...current, ...data.map((bottle) => bottle.id)])]);
         setForm((current) => ({ ...current, plantCount: "" }));
         plantCountRef.current?.focus({ preventScroll: true });
       } else {
@@ -2336,7 +2346,7 @@ function WorkflowPage({ type, user }) {
             <div className="line-head initiation-print-toolbar">
               <div>
                 <b>30 mm × 10 mm barcode labels</b>
-                <p>Select past initiations or print one label directly.</p>
+                <p>Unprinted labels are selected automatically. Untick any you don't need.</p>
               </div>
               <button type="button" disabled={!selectedForPrint.length || pendingPrintIds.length > 0} onClick={() => printInitiationLabels(selectedForPrint)}>
                 Print selected ({selectedForPrint.length})
