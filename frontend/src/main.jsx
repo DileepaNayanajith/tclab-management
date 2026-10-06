@@ -2725,11 +2725,42 @@ function StaffPage() {
 
 function WorkspaceClock({ activePage, user }) {
   const [now, setNow] = useState(new Date());
+  const [environment, setEnvironment] = useState(null);
+  const [sensorError, setSensorError] = useState(false);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(timer);
   }, []);
-  return <section className="workspace-clock"><div><small>CURRENT SECTION</small><b>{activePage}</b><span>{user.fullName} · {user.role}</span></div><time dateTime={now.toISOString()}><small>LOCAL DATE & TIME</small><b>{new Intl.DateTimeFormat("en-LK", { dateStyle: "full", timeStyle: "medium" }).format(now)}</b></time></section>;
+  useEffect(() => {
+    let mounted = true;
+    async function refreshEnvironment() {
+      try {
+        const { data } = await api.get("/lab-environment", { timeout: 10000 });
+        if (mounted) {
+          setEnvironment(data);
+          setSensorError(false);
+        }
+      } catch {
+        if (mounted) setSensorError(true);
+      }
+    }
+    refreshEnvironment();
+    const timer = window.setInterval(refreshEnvironment, 15000);
+    return () => { mounted = false; window.clearInterval(timer); };
+  }, []);
+  const sensorAge = environment?.recordedAt ? now.getTime() - new Date(environment.recordedAt).getTime() : Infinity;
+  const sensorLive = !sensorError && sensorAge >= 0 && sensorAge < 120000;
+  const hasReading = environment?.temperatureC != null && environment?.humidityPercent != null;
+  const sensorStatus = sensorLive ? "Live · updated recently" : hasReading ? "Sensor offline · last reading" : "Waiting for ESP32 sensor";
+  return <section className="workspace-clock">
+    <div><small>CURRENT SECTION</small><b>{activePage}</b><span>{user.fullName} · {user.role}</span></div>
+    <div className={`workspace-environment ${sensorLive ? "is-live" : "is-offline"}`} aria-live="polite">
+      <small>LAB TEMPERATURE & HUMIDITY</small>
+      <b>{hasReading ? `${Number(environment.temperatureC).toFixed(1)} °C  ·  ${Number(environment.humidityPercent).toFixed(0)}% RH` : "— °C  ·  — % RH"}</b>
+      <span>{sensorStatus}</span>
+    </div>
+    <time dateTime={now.toISOString()}><small>LOCAL DATE & TIME</small><b>{new Intl.DateTimeFormat("en-LK", { dateStyle: "full", timeStyle: "medium" }).format(now)}</b></time>
+  </section>;
 }
 
 function OperationalCleanupPage() {
