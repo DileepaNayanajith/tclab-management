@@ -76,7 +76,7 @@ public class WorkflowController {
             "discards", discards.count());
     }
 
-    public record AvailablePlant(String plantCode, String plantName, int multiply, int rooting, int total) {}
+    public record AvailablePlant(String plantCode, String plantName, int initiation, int multiply, int rooting, int total) {}
     public record DashboardMediaStock(Long id, String code, int availableBottles) {}
 
     @GetMapping("/dashboard/media-stock") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DASHBOARD')")
@@ -97,15 +97,23 @@ public class WorkflowController {
 
         record AvailableKey(String code, String name) {}
         var availableGroups = new LinkedHashMap<AvailableKey, int[]>();
+        for (var mother : mothers.findAll()) {
+            if (mother.getStatus() != BottleStatus.ACTIVE) continue;
+            var plant = mother.getPlant();
+            var totals = availableGroups.computeIfAbsent(
+                new AvailableKey(plant.getCode(), displayName(plant)), key -> new int[3]);
+            totals[0] += mother.getPlantCount();
+        }
         for (var culture : active) {
             var plant = culture.getParent().getPlant();
             var totals = availableGroups.computeIfAbsent(
-                new AvailableKey(plant.getCode(), displayName(plant)), key -> new int[2]);
-            totals[culture.isRooting() ? 1 : 0] += culture.getPlantCount();
+                new AvailableKey(plant.getCode(), displayName(plant)), key -> new int[3]);
+            totals[culture.isRooting() ? 2 : 1] += culture.getPlantCount();
         }
         var available = availableGroups.entrySet().stream()
             .map(entry -> new AvailablePlant(entry.getKey().code(), entry.getKey().name(),
-                entry.getValue()[0], entry.getValue()[1], entry.getValue()[0] + entry.getValue()[1]))
+                entry.getValue()[0], entry.getValue()[1], entry.getValue()[2],
+                entry.getValue()[0] + entry.getValue()[1] + entry.getValue()[2]))
             .sorted(Comparator.comparing(AvailablePlant::plantCode))
             .toList();
 

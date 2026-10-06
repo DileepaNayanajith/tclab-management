@@ -58,6 +58,7 @@ class WorkflowCalculationTests {
             .andExpect(status().isCreated());
         assertThat(media.findById(mediaId).orElseThrow().getAvailableBottles()).isEqualTo(10);
 
+        long plantsBeforeInitiation = dashboardPlantTotal();
         long plantId = plants.findAll().getFirst().getId();
         var initiationResponse = mvc.perform(post("/api/mother-bottles").with(httpBasic("admin", "ChangeMe123!"))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -68,6 +69,7 @@ class WorkflowCalculationTests {
         String parentBarcode = json.readTree(initiationResponse).get("barcode").asText();
         long initiationId = json.readTree(initiationResponse).get("id").asLong();
         String shortScanCode = "91%08d".formatted(initiationId);
+        assertThat(dashboardPlantTotal()).isEqualTo(plantsBeforeInitiation + 6);
 
         mvc.perform(get("/api/workflow/scan/{barcode}", shortScanCode).with(httpBasic("admin", "ChangeMe123!")))
             .andExpect(status().isOk())
@@ -86,6 +88,7 @@ class WorkflowCalculationTests {
         String discardScanCode = "92%08d".formatted(created.get(1).get("id").asLong());
         assertThat(media.findById(mediaId).orElseThrow().getAvailableBottles()).isEqualTo(8);
         assertThat(mothers.findByBarcode(parentBarcode).orElseThrow().getStatus()).isEqualTo(BottleStatus.USED);
+        assertThat(dashboardPlantTotal()).isEqualTo(plantsBeforeInitiation + 6);
 
         mvc.perform(get("/api/workflow/scan/{barcode}", exitScanCode).with(httpBasic("admin", "ChangeMe123!")))
             .andExpect(status().isOk())
@@ -115,6 +118,7 @@ class WorkflowCalculationTests {
                     """.formatted(discardScanCode)))
             .andExpect(status().isOk());
         assertThat(subcultures.findByBarcode(discardBarcode).orElseThrow().getStatus()).isEqualTo(BottleStatus.DISCARDED);
+        assertThat(dashboardPlantTotal()).isEqualTo(plantsBeforeInitiation + 1);
 
         mvc.perform(post("/api/subcultures").with(httpBasic("admin", "ChangeMe123!"))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -123,5 +127,15 @@ class WorkflowCalculationTests {
                     """.formatted(discardScanCode, mediaId)))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("This bottle has already been discarded and cannot be subcultured."));
+    }
+
+    private long dashboardPlantTotal() throws Exception {
+        var response = mvc.perform(get("/api/dashboard/details").with(httpBasic("admin", "ChangeMe123!")))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        long total = 0;
+        for (var plant : json.readTree(response).get("availablePlants")) {
+            total += plant.get("total").asLong();
+        }
+        return total;
     }
 }

@@ -187,6 +187,7 @@ function OperationalTables({ details }) {
             <tr>
               <th>Plant code</th>
               <th>Plant name</th>
+              <th>Initiation</th>
               <th>Multiply</th>
               <th>Rooting</th>
               <th>Total</th>
@@ -199,6 +200,7 @@ function OperationalTables({ details }) {
                   <b>{row.plantCode}</b>
                 </td>
                 <td>{row.plantName}</td>
+                <td>{row.initiation}</td>
                 <td>{row.multiply}</td>
                 <td>{row.rooting}</td>
                 <td>
@@ -208,8 +210,8 @@ function OperationalTables({ details }) {
             ))}
             {!details.availablePlants.length && (
               <tr>
-                <td colSpan="5" className="empty">
-                  No active subculture plants yet.
+                <td colSpan="6" className="empty">
+                  No active plants yet.
                 </td>
               </tr>
             )}
