@@ -27,6 +27,7 @@ public class DiscardRecord {
     public String getTechnician() { return technician; }
     public void setTechnician(String technician) { this.technician = technician; }
     public LocalDate getDiscardedDate() { return discardedDate; }
+    public void setDiscardedDate(LocalDate discardedDate) { this.discardedDate = discardedDate; }
     public String getPlantCode() { return plantCode; }
     public void setPlantCode(String plantCode) { this.plantCode = plantCode; }
     public String getPlantName() { return plantName; }

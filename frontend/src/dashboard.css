@@ -35,6 +35,16 @@
 .overdue-barcode-list code { padding: 6px 8px; border: 1px solid #f0c9c1; border-radius: 6px; background: white; color: #7f3024; font-size: 12px; font-weight: 700; }
 .analytics-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 240px)); gap: 18px; margin: 28px 0 0; }
 .analytics-panel { display: grid; gap: 26px; }
+.production-report { display: grid; gap: 22px; margin-top: 28px; }
+.report-controls { display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 16px; }
+.report-controls label { min-width: 0; }
+.report-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.report-summary > div { display: grid; gap: 6px; padding: 16px; border: 1px solid #e5ede9; border-radius: 12px; background: #f8fbf9; }
+.report-summary span { color: #60766b; font-size: 12px; font-weight: 700; }
+.report-summary strong { color: #214f3b; font-size: 24px; }
+.report-definition { margin: 0; color: #63776d; font-size: 12px; line-height: 1.6; }
+.report-table { overflow-x: auto; }
+.report-table table { min-width: 700px; }
 .chart-controls { display: grid; grid-template-columns: repeat(4, minmax(170px, 1fr)); gap: 16px; padding-bottom: 22px; border-bottom: 1px solid #e5ede9; }
 .chart-title { display: flex; justify-content: space-between; align-items: end; gap: 16px; }
 .chart-title > div:first-child { display: grid; gap: 5px; }
@@ -55,7 +65,7 @@
 
 @media (max-width: 900px) {
   .dashboard-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .chart-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chart-controls, .report-controls, .report-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
@@ -63,7 +73,7 @@
   .dashboard-header { flex-direction: column; }
   .dashboard-table .table-heading { padding: 20px 18px 14px; }
   .dashboard-table .table-heading h2 { font-size: 18px; }
-  .analytics-summary, .chart-controls { grid-template-columns: 1fr; }
+  .analytics-summary, .chart-controls, .report-controls, .report-summary { grid-template-columns: 1fr; }
   .chart-title { align-items: flex-start; flex-direction: column; }
   .chart-downloads { justify-content: flex-start; }
   .trend-summary { align-items: flex-start; flex-direction: column; }

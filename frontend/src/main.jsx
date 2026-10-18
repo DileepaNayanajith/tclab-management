@@ -40,6 +40,7 @@ const nav = [
 ];
 const accessOptions = [
   ["Dashboard", "ACCESS_DASHBOARD"],
+  ["Analytics", "ACCESS_ANALYTICS"],
   ["Plants", "ACCESS_PLANTS"],
   ["Media Bottles", "ACCESS_MEDIA"],
   ["Plant Initiation", "ACCESS_MOTHER_BOTTLES"],
@@ -316,6 +317,12 @@ function AnalyticsChart({ data, type, metricLabel, chartRef }) {
 
 function AnalyticsPage() {
   const [records, setRecords] = useState([]),
+    [production, setProduction] = useState(null),
+    [interval, setInterval] = useState("day"),
+    [technician, setTechnician] = useState(""),
+    [fromDate, setFromDate] = useState(""),
+    [toDate, setToDate] = useState(""),
+    [productionError, setProductionError] = useState(""),
     [xAxis, setXAxis] = useState("month"),
     [yAxis, setYAxis] = useState("plants"),
     [reasonFilter, setReasonFilter] = useState("All"),
@@ -325,12 +332,31 @@ function AnalyticsPage() {
 
   useEffect(() => {
     api
-      .get("/discards")
+      .get("/analytics/discards")
       .then((response) => setRecords(response.data))
       .catch((requestError) =>
         setError(requestError.response?.data?.message || "Could not load analytics data."),
       );
   }, []);
+
+  useEffect(() => {
+    if (fromDate && toDate && fromDate > toDate) {
+      setProduction(null);
+      setProductionError("From date must be on or before to date.");
+      return;
+    }
+    let cancelled = false;
+    setProduction(null);
+    setProductionError("");
+    api.get("/analytics/production", { params: {
+      interval, technician, ...(fromDate && { from: fromDate }), ...(toDate && { to: toDate }),
+    } }).then(({ data }) => {
+      if (!cancelled) setProduction(data);
+    }).catch((requestError) => {
+      if (!cancelled) setProductionError(requestError.response?.data?.message || "Could not load subculture report.");
+    });
+    return () => { cancelled = true; };
+  }, [interval, technician, fromDate, toDate]);
 
   const filtered = records.filter(
     (item) =>
@@ -412,13 +438,51 @@ function AnalyticsPage() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  function downloadProductionCsv() {
+    if (!production) return;
+    const escape = (value) => `"${String(value).replaceAll('"', '""')}"`;
+    const rows = [["Period", "Technician", "Bottles produced", "Plants subcultured", "Contaminated bottles", "Contamination rate (%)"],
+      ...production.rows.map((row) => [row.period, row.technicianName, row.bottles, row.plants,
+        row.contaminatedBottles, row.contaminationRate])];
+    const url = URL.createObjectURL(new Blob([rows.map((row) => row.map(escape).join(",")).join("\n")],
+      { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `subculture-report-${interval}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   return (
     <>
       <header>
-        <p className="eyebrow">ADMIN ANALYTICS</p>
+        <p className="eyebrow">LAB ANALYTICS</p>
         <h1>Laboratory analytics</h1>
-        <p className="muted">Choose an X-axis and Y-axis to generate the graph automatically.</p>
+        <p className="muted">Review work by technician and period, then explore discard trends below.</p>
       </header>
+      <section className="panel production-report">
+        <div className="chart-title"><div><h2>Subculture & contamination report</h2><span>Filter by staff member and day, ISO week, or month.</span></div><button type="button" className="secondary compact" onClick={downloadProductionCsv} disabled={!production?.rows.length}>Download report (CSV)</button></div>
+        <div className="report-controls">
+          <label>Technician<select value={technician} onChange={(event) => setTechnician(event.target.value)}><option value="">All staff</option>{(production?.technicians || []).map((person) => <option key={person.username} value={person.username}>{person.name} ({person.username})</option>)}</select></label>
+          <label>Group by<select value={interval} onChange={(event) => setInterval(event.target.value)}><option value="day">Daily</option><option value="week">Weekly</option><option value="month">Monthly</option></select></label>
+          <label>From<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
+          <label>To<input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} /></label>
+        </div>
+        {productionError && <div className="error">{productionError}</div>}
+        {!production && !productionError && <p className="muted">Loading report…</p>}
+        {production && <>
+          <div className="report-summary">
+            <div><span>Plants subcultured</span><strong>{production.summary.plants.toLocaleString()}</strong></div>
+            <div><span>Bottles produced</span><strong>{production.summary.bottles.toLocaleString()}</strong></div>
+            <div><span>Contaminated bottles</span><strong>{production.summary.contaminatedBottles.toLocaleString()}</strong></div>
+            <div><span>Contamination rate</span><strong>{production.summary.contaminationRate.toFixed(1)}%</strong></div>
+          </div>
+          <p className="report-definition">Contamination rate = bottles made in the period that were later discarded for bacterial, fungal, mite, or other recorded contamination ÷ all subculture bottles made in that period. Plant-death and other non-contamination discards are excluded.</p>
+          <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Technician</th><th>Bottles</th><th>Plants subcultured</th><th>Contaminated bottles</th><th>Rate</th></tr></thead><tbody>{production.rows.map((row) => <tr key={`${row.period}-${row.technician}`}><td>{row.period}</td><td>{row.technicianName}</td><td>{row.bottles}</td><td><b>{row.plants}</b></td><td>{row.contaminatedBottles}</td><td><b>{row.contaminationRate.toFixed(1)}%</b></td></tr>)}{!production.rows.length && <tr><td colSpan="6" className="empty">No subculture bottles match these filters.</td></tr>}</tbody></table></div>
+        </>}
+      </section>
       {error && <div className="error">{error}</div>}
       <section className="analytics-summary">
         <article className="stat"><span>Discarded bottles</span><strong>{filtered.length}</strong></article>
