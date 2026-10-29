@@ -16,7 +16,14 @@ import {
   ShoppingCart,
   BarChart3,
   Pencil,
+  Menu,
+  X,
 } from "lucide-react";
+import labAisle1280 from "./assets/lab-aisle-1280.webp";
+import labAisle1920 from "./assets/lab-aisle-1920.webp";
+import labAisleFallback from "./assets/lab-aisle-1280.jpg";
+import labAislePortrait720 from "./assets/lab-aisle-portrait-720.webp";
+import labAislePortrait1080 from "./assets/lab-aisle-portrait-1080.webp";
 import "./styles.css";
 import "./staff.css";
 import "./dashboard.css";
@@ -76,12 +83,77 @@ function currentIsoDate() {
   };
 }
 
+function scrollToTop() {
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+}
+
+function LabPhoto() {
+  const imageRef = useRef(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    if (imageRef.current?.complete) setLoaded(true);
+  }, []);
+  return (
+    <picture className={`login-photo${loaded ? " is-loaded" : ""}`}>
+      <source
+        media="(max-aspect-ratio: 4/5)"
+        type="image/webp"
+        srcSet={`${labAislePortrait720} 720w, ${labAislePortrait1080} 1080w`}
+        sizes="100vw"
+      />
+      <source
+        type="image/webp"
+        srcSet={`${labAisle1280} 1280w, ${labAisle1920} 1920w`}
+        sizes="100vw"
+      />
+      <img
+        ref={imageRef}
+        src={labAisleFallback}
+        alt=""
+        decoding="async"
+        fetchPriority="high"
+        onLoad={() => setLoaded(true)}
+      />
+    </picture>
+  );
+}
+
+function AuthLayout({ story = false, children }) {
+  return (
+    <main className={`login${story ? " has-story" : ""}`}>
+      <LabPhoto />
+      {children}
+      {story && (
+        <section className="login-story" aria-labelledby="login-story-title">
+          <p className="eyebrow">TISSUE CULTURE LABORATORY</p>
+          <h2 id="login-story-title">Every culture, tracked bottle by bottle.</h2>
+          <p>
+            Register subcultures, scan bottle barcodes and keep live inventory
+            accurate across every shelf in the lab.
+          </p>
+          <ul className="login-flow" aria-label="Laboratory workflow">
+            <li>Initiation</li>
+            <li>Subculture</li>
+            <li>Rooting</li>
+            <li>Hardening</li>
+            <li>Sales</li>
+          </ul>
+        </section>
+      )}
+    </main>
+  );
+}
+
 function Login({ onLogin }) {
   const [username, setUsername] = useState(""),
     [password, setPassword] = useState(""),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [submitting, setSubmitting] = useState(false);
   async function submit(e) {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     const token = btoa(`${username.trim()}:${password}`);
     api.defaults.headers.common.Authorization = `Basic ${token}`;
     try {
@@ -91,18 +163,21 @@ function Login({ onLogin }) {
     } catch {
       delete api.defaults.headers.common.Authorization;
       setError("Username or password is incorrect.");
+      setSubmitting(false);
     }
   }
   return (
-    <main className="login">
+    <AuthLayout story>
       <form className="login-card" onSubmit={submit} autoComplete="off">
-        <div className="brand-mark">
-          <Leaf />
-        </div>
-        <p className="eyebrow">NATURAL FOLIAGE</p>
-        <h1>Lab Management</h1>
-        <p className="muted">Sign in to manage cultures and inventory.</p>
-        {error && <div className="error">{error}</div>}
+        <header className="login-card-head">
+          <div className="brand-mark">
+            <Leaf aria-hidden="true" />
+          </div>
+          <p className="eyebrow">NATURAL FOLIAGE</p>
+          <h1>Lab Management</h1>
+          <p className="muted">Sign in to manage cultures and inventory.</p>
+        </header>
+        {error && <div className="error" role="alert">{error}</div>}
         <label>
           Username
           <input
@@ -122,16 +197,17 @@ function Login({ onLogin }) {
             onChange={(e) => setPassword(e.target.value)}
           />
         </label>
-        <button>Sign in</button>
+        <button disabled={submitting}>{submitting ? "Signing in…" : "Sign in"}</button>
+        <p className="login-help">Need access? Ask a lab administrator.</p>
       </form>
-    </main>
+    </AuthLayout>
   );
 }
 
-function LaminaFlowSetup({ user, onSelect }) {
+function LaminaFlowSetup({ user, onSelect, onSignOut }) {
   const [value, setValue] = useState("LF-01");
   return (
-    <main className="login">
+    <AuthLayout>
       <form
         className="login-card"
         onSubmit={(e) => {
@@ -139,14 +215,16 @@ function LaminaFlowSetup({ user, onSelect }) {
           onSelect(value);
         }}
       >
-        <div className="brand-mark">
-          <RefreshCw />
-        </div>
-        <p className="eyebrow">SUBCULTURE SESSION</p>
-        <h1>Hello, {user.fullName}</h1>
-        <p className="muted">
-          Select the lamina flow cabinet you are using for this login session.
-        </p>
+        <header className="login-card-head">
+          <div className="brand-mark">
+            <RefreshCw aria-hidden="true" />
+          </div>
+          <p className="eyebrow">SUBCULTURE SESSION</p>
+          <h1>Hello, {user.fullName}</h1>
+          <p className="muted">
+            Select the lamina flow cabinet you are using for this login session.
+          </p>
+        </header>
         <label>
           Lamina flow
           <select value={value} onChange={(e) => setValue(e.target.value)}>
@@ -157,8 +235,12 @@ function LaminaFlowSetup({ user, onSelect }) {
           </select>
         </label>
         <button>Start session</button>
+        <button type="button" className="secondary" onClick={onSignOut}>
+          <LogOut size={16} aria-hidden="true" />
+          Not you? Sign out
+        </button>
       </form>
-    </main>
+    </AuthLayout>
   );
 }
 
@@ -798,7 +880,7 @@ function CrudPage({ type, user }) {
     setEditingId(row.id);
     setForm(Object.fromEntries(c.fields.map(([key]) => [key, row[key] ?? ""])));
     setError("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToTop();
   }
   function cancelEdit() {
     setEditingId(null);
@@ -915,7 +997,7 @@ function MediaCompositionPage() {
       agar: item.agar ?? "",
     });
     setError("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToTop();
   }
   function cancelEdit() {
     setEditingId(null);
@@ -1176,7 +1258,7 @@ function MediaBottlesPage({ user }) {
     setBottleCount(String(item.bottleCount));
     setPh(item.ph ?? item.media.ph ?? ""); setAgar(item.agar ?? item.media.agar ?? "");
     setSterilizationMethod(item.sterilizationMethod || ""); setError("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToTop();
   }
   function cancelEdit() {
     setEditingId(null); setMediaId(""); setBottleCount(""); setPh(""); setAgar("");
@@ -2879,14 +2961,14 @@ function OperationalCleanupPage() {
       setMessage(error.response?.data?.message || "Cleanup failed. No data should have been cleared.");
     } finally { setBusy(false); }
   }
-  return <main className="login"><section className="login-card" style={{ width: "min(680px, 94vw)" }}>
+  return <AuthLayout><section className="login-card" style={{ width: "min(680px, 100%)" }}>
     <h1>One-time operational cleanup</h1>
     <p>Preserve plant varieties, media compositions and all staff accounts. Clear only operational records and reset media bottle stock to zero.</p>
     {preview && <ul>{Object.entries(preview).map(([key, value]) => <li key={key}>{key}: {value}</li>)}</ul>}
     {message && <p role="status">{message}</p>}
     <button type="button" disabled={busy || !preview} onClick={backup}>Download full data backup</button>
     <button type="button" disabled={busy || !backupReady} onClick={clear} style={{ marginTop: 12, background: "#a32525" }}>Clear operational data</button>
-  </section></main>;
+  </section></AuthLayout>;
 }
 
 function App() {
@@ -2897,7 +2979,12 @@ function App() {
     [loading, setLoading] = useState(!!token),
     [sessionLaminaFlow, setSessionLaminaFlow] = useState(
       sessionStorage.getItem("laminaFlow") || "",
-    );
+    ),
+    [navOpen, setNavOpen] = useState(false);
+  const sidebarRef = useRef(null),
+    menuButtonRef = useRef(null),
+    mainRef = useRef(null),
+    navFocusTarget = useRef(null);
   useEffect(() => {
     if (token)
       api
@@ -2906,7 +2993,47 @@ function App() {
         .catch(() => sessionStorage.removeItem("labAuth"))
         .finally(() => setLoading(false));
   }, []);
-  if (loading) return <div className="loading">Loading…</div>;
+  useEffect(() => {
+    if (!navOpen) {
+      const target = navFocusTarget.current === "main" ? mainRef.current : navFocusTarget.current === "menu" ? menuButtonRef.current : null;
+      navFocusTarget.current = null;
+      // Keep the page's own autofocus (e.g. barcode scan fields) when it has one.
+      if (target === mainRef.current && target?.contains(document.activeElement)) return;
+      target?.focus({ preventScroll: true });
+      return;
+    }
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    function onKeyDown(event) {
+      if (event.key === "Escape") {
+        navFocusTarget.current = "menu";
+        setNavOpen(false);
+      }
+    }
+    function onViewportChange(event) {
+      if (event.matches) setNavOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    desktop.addEventListener("change", onViewportChange);
+    document.body.classList.add("nav-locked");
+    const sidebar = sidebarRef.current;
+    (sidebar?.querySelector(".sidebar-nav .active") || sidebar?.querySelector(".sidebar-nav button"))?.focus();
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      desktop.removeEventListener("change", onViewportChange);
+      document.body.classList.remove("nav-locked");
+    };
+  }, [navOpen]);
+  function closeNav(focusTarget) {
+    navFocusTarget.current = focusTarget;
+    setNavOpen(false);
+  }
+  function signOut() {
+    sessionStorage.clear();
+    delete api.defaults.headers.common.Authorization;
+    setNavOpen(false);
+    setUser(null);
+  }
+  if (loading) return <div className="loading" role="status">Loading…</div>;
   if (!user) return <Login onLogin={setUser} />;
   if (user.role === "ADMIN" && new URLSearchParams(window.location.search).get("cleanup") === "1") {
     return <OperationalCleanupPage />;
@@ -2924,6 +3051,7 @@ function App() {
           sessionStorage.setItem("laminaFlow", value);
           setSessionLaminaFlow(value);
         }}
+        onSignOut={signOut}
       />
     );
   }
@@ -2939,11 +3067,31 @@ function App() {
       : visibleNav[0]?.[0];
   if (!activePage)
     return (
-      <div className="loading">
-        Your account has no system access. Ask an administrator to assign
-        access.
-      </div>
+      <AuthLayout>
+        <section className="login-card">
+          <header className="login-card-head">
+            <div className="brand-mark">
+              <Leaf aria-hidden="true" />
+            </div>
+            <p className="eyebrow">NATURAL FOLIAGE</p>
+            <h1>No system access</h1>
+          </header>
+          <p className="muted">
+            Your account has no system access. Ask an administrator to assign
+            access.
+          </p>
+          <button type="button" className="secondary" onClick={signOut}>
+            <LogOut size={16} aria-hidden="true" />
+            Sign out
+          </button>
+        </section>
+      </AuthLayout>
     );
+  function selectPage(label) {
+    if (label !== activePage) window.scrollTo({ top: 0 });
+    setPage(label);
+    if (navOpen) closeNav("main");
+  }
   let content =
     activePage === "Dashboard" ? (
       <Dashboard user={user} />
@@ -2969,46 +3117,75 @@ function App() {
       <WorkflowPage type={activePage} user={user} />
     );
   return (
-    <div className="shell">
-      <aside>
-        <div className="logo">
-          <Leaf />
-          <div>
-            <b>Natural Foliage</b>
-            <span>LAB SYSTEM</span>
-          </div>
+    <div className={`shell${navOpen ? " nav-open" : ""}`}>
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      <header className="topbar" inert={navOpen}>
+        <button
+          type="button"
+          className="menu-toggle"
+          ref={menuButtonRef}
+          aria-label="Open navigation menu"
+          aria-controls="app-sidebar"
+          aria-expanded={navOpen}
+          onClick={() => setNavOpen(true)}
+        >
+          <Menu size={22} aria-hidden="true" />
+        </button>
+        <div className="topbar-title">
+          <span>Natural Foliage Lab</span>
+          <b>{activePage}</b>
         </div>
-        <nav>
+        <span className="avatar" aria-hidden="true">{user.fullName[0]}</span>
+      </header>
+      <aside id="app-sidebar" className="sidebar" ref={sidebarRef} aria-label="Lab navigation">
+        <div className="sidebar-head">
+          <div className="logo">
+            <Leaf aria-hidden="true" />
+            <div>
+              <b>Natural Foliage</b>
+              <span>LAB SYSTEM</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="nav-close"
+            aria-label="Close navigation menu"
+            onClick={() => closeNav("menu")}
+          >
+            <X size={20} aria-hidden="true" />
+          </button>
+        </div>
+        <nav className="sidebar-nav" aria-label="Sections">
           {visibleNav.map(([label, Icon]) => (
             <button
+              type="button"
               className={activePage === label ? "active" : ""}
-              onClick={() => setPage(label)}
+              aria-current={activePage === label ? "page" : undefined}
+              onClick={() => selectPage(label)}
               key={label}
             >
-              <Icon size={19} />
+              <Icon size={19} aria-hidden="true" />
               {label}
             </button>
           ))}
         </nav>
         <div className="profile">
-          <div className="avatar">{user.fullName[0]}</div>
-          <div>
+          <div className="avatar" aria-hidden="true">{user.fullName[0]}</div>
+          <div className="profile-id">
             <b>{user.fullName}</b>
             <span>{user.role}</span>
           </div>
-          <button
-            className="icon"
-            onClick={() => {
-              sessionStorage.clear();
-              delete api.defaults.headers.common.Authorization;
-              setUser(null);
-            }}
-          >
-            <LogOut size={17} />
+          <button type="button" className="sign-out" onClick={signOut}>
+            <LogOut size={17} aria-hidden="true" />
+            Sign out
           </button>
         </div>
       </aside>
-      <main className="content"><WorkspaceClock activePage={activePage} user={user} />{content}</main>
+      <div className="nav-backdrop" aria-hidden="true" onClick={() => closeNav("menu")} />
+      <main className="content" id="main-content" tabIndex={-1} ref={mainRef} inert={navOpen}>
+        <WorkspaceClock activePage={activePage} user={user} />
+        {content}
+      </main>
     </div>
   );
 }

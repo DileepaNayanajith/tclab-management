@@ -1,10 +1,12 @@
 select {
   font: inherit;
-  border: 1px solid #d6e0db;
-  border-radius: 9px;
+  font-size: 15px;
+  font-weight: 500;
+  border: 1px solid var(--nf-field-line);
+  border-radius: 10px;
   padding: 11px 12px;
   outline: none;
-  background: #fbfdfc;
+  background: rgba(255, 255, 255, 0.94);
 }
 .badge.inactive {
   background: #f1f2f1;
@@ -82,13 +84,16 @@ select {
 .plant-initiation-list::-webkit-scrollbar-track { border-radius: 999px; background: #e7efeb; }
 .plant-initiation-form::-webkit-scrollbar-thumb,
 .plant-initiation-list::-webkit-scrollbar-thumb { border: 2px solid #e7efeb; border-radius: 999px; background: #5c8b74; }
-@media (max-width: 800px) {
+@media (max-width: 1199px) {
+  /* Stacked layout: forms grow with the page, record lists scroll inside their own panel. */
   .media-composition-form,
-  .media-composition-list,
   .media-preparation-form,
+  .plant-initiation-form { height: auto; overflow: visible; }
+  .media-composition-list,
   .media-preparation-list,
-  .plant-initiation-form,
-  .plant-initiation-list { height: 55vh; min-height: 340px; }
+  .plant-initiation-list { height: auto; max-height: min(70vh, 640px); min-height: 0; overflow-y: auto; }
+}
+@media (max-width: 800px) {
   .other-hormone-fields { grid-template-columns: 1fr; }
 }
 .compact {
@@ -178,12 +183,15 @@ select {
   font-weight: 800;
   white-space: nowrap;
 }
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
   .staff-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
-  .staff-form-panel,
-  .staff-list-panel { height: 55vh; min-height: 360px; }
+  .staff-form-panel { height: auto; overflow: visible; }
+  .staff-list-panel { height: auto; max-height: min(70vh, 640px); }
+}
+@media (max-width: 560px) {
+  .access-picker > div { grid-template-columns: minmax(0, 1fr); }
 }
 
 .multi-select {
@@ -192,10 +200,11 @@ select {
 .multi-select summary {
   list-style: none;
   cursor: pointer;
-  border: 1px solid #d6e0db;
-  border-radius: 9px;
+  border: 1px solid var(--nf-field-line);
+  border-radius: 10px;
   padding: 11px 36px 11px 12px;
-  background: #fbfdfc;
+  background: rgba(255, 255, 255, 0.94);
+  font-size: 14px;
   font-weight: 500;
   color: #4f5f57;
   position: relative;
@@ -304,11 +313,13 @@ select {
 .form textarea {
   min-height: 95px;
   resize: vertical;
-  border: 1px solid #d6e0db;
-  border-radius: 9px;
+  border: 1px solid var(--nf-field-line);
+  border-radius: 10px;
   padding: 11px 12px;
-  background: #fbfdfc;
+  background: rgba(255, 255, 255, 0.94);
   font: inherit;
+  font-size: 15px;
+  font-weight: 500;
 }
 .checkbox-field {
   display: flex;
@@ -325,9 +336,9 @@ select {
   height: 16px;
   accent-color: #277657;
 }
-@media (max-width: 1050px) {
+@media (max-width: 1199px) {
   .workflow-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 .selected-values {
@@ -355,6 +366,7 @@ select {
 .subculture-form {
   margin-bottom: 22px;
 }
+.subculture-form > form { margin-top: 18px; }
 .recent-subcultures { margin-bottom: 22px; }
 .recent-subcultures .line-head { padding: 4px 2px 14px; }
 .session-fields { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -433,12 +445,13 @@ select {
 .pos-total span { color: #667970; font-size: 13px; font-weight: 700; }
 .pos-total strong { font: 800 24px Manrope; }
 .invoice { max-width: 900px; margin-inline: auto; }
-.invoice-head, .invoice-meta { display: flex; justify-content: space-between; gap: 20px; }
+.invoice-head, .invoice-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 20px; }
 .invoice-meta { margin: 24px 0; padding: 16px; border-radius: 10px; background: #f1f7f4; }
 .invoice-meta span { display: grid; gap: 4px; }
 .invoice-meta small { color: #71847a; font-size: 9px; font-weight: 800; letter-spacing: 1px; }
 .invoice-grand-total { margin-top: 20px; text-align: right; font: 800 22px Manrope; }
 @media (max-width: 700px) { .pos-customer { grid-template-columns: 1fr; } .pos-total { align-items: stretch; flex-direction: column; } }
+@media screen and (max-width: 700px) { .invoice { overflow-x: auto; } .invoice table { min-width: 480px; } }
 @media print {
   body * { visibility: hidden; }
   #sale-invoice, #sale-invoice * { visibility: visible; }
@@ -454,8 +467,10 @@ select {
 }
 .line-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 10px 16px;
   margin-bottom: 12px;
 }
 .line-head h2 {
@@ -564,11 +579,19 @@ select {
 @media (max-width: 800px) {
   .scan-row,
   .subculture-meta,
-  .culture-line,
-  .scan-result {
+  .culture-line {
     grid-template-columns: 1fr;
   }
+  .scan-result { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .scan-result span:first-child { grid-column: 1 / -1; }
   .session-fields { grid-template-columns: 1fr; }
+  .culture-line { padding-top: 12px; border-top: 1px solid #e3ece7; }
+  .line-head + .culture-line { padding-top: 0; border-top: 0; }
+  .culture-line > .icon { justify-self: end; }
+}
+@media (pointer: coarse) {
+  .quantity-field input { height: 38px; }
+  .other-hormone-fields > input { height: 40px; }
 }
 @media print {
   @page barcode-label {
