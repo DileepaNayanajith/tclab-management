@@ -91,14 +91,18 @@ public class WorkflowController {
 
     @GetMapping("/dashboard/details") @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_DASHBOARD')")
     DashboardDetails dashboardDetails() {
+        // A discard record is authoritative even if an older bottle row still says ACTIVE.
+        var discardedBarcodes = new HashSet<String>();
+        discards.findAll().forEach(record -> discardedBarcodes.add(record.getBarcode()));
         var active = subcultures.findAll().stream()
-            .filter(culture -> culture.getStatus() == BottleStatus.ACTIVE)
+            .filter(culture -> culture.getStatus() == BottleStatus.ACTIVE
+                && !discardedBarcodes.contains(culture.getBarcode()))
             .toList();
 
         record AvailableKey(String code, String name) {}
         var availableGroups = new LinkedHashMap<AvailableKey, int[]>();
         for (var mother : mothers.findAll()) {
-            if (mother.getStatus() != BottleStatus.ACTIVE) continue;
+            if (mother.getStatus() != BottleStatus.ACTIVE || discardedBarcodes.contains(mother.getBarcode())) continue;
             var plant = mother.getPlant();
             var totals = availableGroups.computeIfAbsent(
                 new AvailableKey(plant.getCode(), displayName(plant)), key -> new int[3]);
@@ -114,6 +118,7 @@ public class WorkflowController {
             .map(entry -> new AvailablePlant(entry.getKey().code(), entry.getKey().name(),
                 entry.getValue()[0], entry.getValue()[1], entry.getValue()[2],
                 entry.getValue()[0] + entry.getValue()[1] + entry.getValue()[2]))
+            .filter(item -> item.total() > 0)
             .sorted(Comparator.comparing(AvailablePlant::plantCode))
             .toList();
 

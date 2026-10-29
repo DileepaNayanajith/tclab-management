@@ -2,6 +2,9 @@ package com.naturalfoliage.lab;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.naturalfoliage.lab.model.BottleStatus;
+import com.naturalfoliage.lab.model.DiscardRecord;
+import com.naturalfoliage.lab.model.MotherBottle;
+import com.naturalfoliage.lab.model.Plant;
 import com.naturalfoliage.lab.repository.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +13,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.ActiveProfiles;
+import java.util.UUID;
+import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
@@ -29,6 +34,51 @@ class WorkflowCalculationTests {
     @Autowired MediaCompositionRepository media;
     @Autowired MotherBottleRepository mothers;
     @Autowired SubcultureRepository subcultures;
+    @Autowired DiscardRepository discards;
+
+    @Test
+    void availablePlantsExcludesDiscardedBottlesEvenWhenLegacyStatusIsActive() throws Exception {
+        var plant = new Plant();
+        plant.setCode("DISCARD-" + UUID.randomUUID().toString().substring(0, 8));
+        plant.setName("Discard dashboard test");
+        var savedPlant = plants.save(plant);
+
+        var mediaItem = media.findAll().getFirst();
+        var discarded = new MotherBottle();
+        discarded.setBarcode("DISCARDED-" + UUID.randomUUID());
+        discarded.setPlant(savedPlant);
+        discarded.setMedia(mediaItem);
+        discarded.setPlantCount(7);
+        discarded.setTechnician("admin");
+        mothers.save(discarded);
+
+        var history = new DiscardRecord();
+        history.setBarcode(discarded.getBarcode());
+        history.setReason("Legacy discard");
+        discards.save(history);
+
+        var available = new MotherBottle();
+        available.setBarcode("AVAILABLE-" + UUID.randomUUID());
+        available.setPlant(savedPlant);
+        available.setMedia(mediaItem);
+        available.setPlantCount(3);
+        available.setTechnician("admin");
+        mothers.save(available);
+
+        var response = mvc.perform(get("/api/dashboard/details").with(httpBasic("admin", "ChangeMe123!")))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        var matching = StreamSupport.stream(json.readTree(response).get("availablePlants").spliterator(), false)
+            .filter(row -> savedPlant.getCode().equals(row.get("plantCode").asText())).toList();
+        assertThat(matching).hasSize(1);
+        assertThat(matching.getFirst().get("total").asInt()).isEqualTo(3);
+
+        available.setStatus(BottleStatus.DISCARDED);
+        mothers.save(available);
+        response = mvc.perform(get("/api/dashboard/details").with(httpBasic("admin", "ChangeMe123!")))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(StreamSupport.stream(json.readTree(response).get("availablePlants").spliterator(), false)
+            .noneMatch(row -> savedPlant.getCode().equals(row.get("plantCode").asText()))).isTrue();
+    }
 
     @Test
     void frontendLoadsWithoutBrowserAuthenticationChallenge() throws Exception {
