@@ -3,6 +3,7 @@ package com.naturalfoliage.lab.controller;
 import com.naturalfoliage.lab.model.DiscardRecord;
 import com.naturalfoliage.lab.model.Subculture;
 import com.naturalfoliage.lab.repository.DiscardRepository;
+import com.naturalfoliage.lab.repository.MotherBottleRepository;
 import com.naturalfoliage.lab.repository.SubcultureRepository;
 import com.naturalfoliage.lab.repository.UserRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,11 +27,14 @@ import java.util.Map;
 @PreAuthorize("hasRole('ADMIN') or hasAuthority('ACCESS_ANALYTICS')")
 public class AnalyticsController {
     private final SubcultureRepository subcultures;
+    private final MotherBottleRepository mothers;
     private final DiscardRepository discards;
     private final UserRepository users;
 
-    public AnalyticsController(SubcultureRepository subcultures, DiscardRepository discards, UserRepository users) {
+    public AnalyticsController(SubcultureRepository subcultures, MotherBottleRepository mothers,
+                               DiscardRepository discards, UserRepository users) {
         this.subcultures = subcultures;
+        this.mothers = mothers;
         this.discards = discards;
         this.users = users;
     }
@@ -40,6 +44,48 @@ public class AnalyticsController {
     public record PeriodRow(String period, String technician, String technicianName, long bottles,
                             long plants, long contaminatedBottles, double contaminationRate) {}
     public record ProductionReport(List<TechnicianOption> technicians, List<PeriodRow> rows, Summary summary) {}
+    public record OutputRow(String period, long initiationBottles, long initiationPlants,
+                            long subcultureBottles, long subculturePlants) {}
+    public record OutputReport(List<OutputRow> rows) {}
+
+    private static class OutputTotals {
+        long initiationBottles;
+        long initiationPlants;
+        long subcultureBottles;
+        long subculturePlants;
+
+        OutputRow row(String period) {
+            return new OutputRow(period, initiationBottles, initiationPlants,
+                subcultureBottles, subculturePlants);
+        }
+    }
+
+    @GetMapping("/output")
+    public OutputReport output(@RequestParam(defaultValue = "month") String interval) {
+        if (!List.of("month", "year").contains(interval)) {
+            throw new IllegalArgumentException("Interval must be month or year");
+        }
+        Map<String, OutputTotals> groups = new HashMap<>();
+        mothers.findAll().forEach(bottle -> {
+            if (bottle.getCreatedDate() == null) return;
+            var total = groups.computeIfAbsent(period(bottle.getCreatedDate(), interval),
+                ignored -> new OutputTotals());
+            total.initiationBottles++;
+            total.initiationPlants += bottle.getPlantCount();
+        });
+        subcultures.findAll().forEach(bottle -> {
+            if (bottle.getCreatedDate() == null) return;
+            var total = groups.computeIfAbsent(period(bottle.getCreatedDate(), interval),
+                ignored -> new OutputTotals());
+            total.subcultureBottles++;
+            total.subculturePlants += bottle.getPlantCount();
+        });
+        var rows = groups.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey(Comparator.reverseOrder()))
+            .map(entry -> entry.getValue().row(entry.getKey()))
+            .toList();
+        return new OutputReport(rows);
+    }
 
     private record GroupKey(String period, String technician) {}
     private static class Totals {
@@ -116,6 +162,7 @@ public class AnalyticsController {
 
     private static String period(LocalDate date, String interval) {
         return switch (interval) {
+            case "year" -> String.valueOf(date.getYear());
             case "week" -> "%d-W%02d".formatted(date.get(WeekFields.ISO.weekBasedYear()),
                 date.get(WeekFields.ISO.weekOfWeekBasedYear()));
             case "month" -> "%d-%02d".formatted(date.getYear(), date.getMonthValue());

@@ -397,6 +397,89 @@ function AnalyticsChart({ data, type, metricLabel, chartRef }) {
   );
 }
 
+function ProductionOverview() {
+  const [interval, setInterval] = useState("month");
+  const [measure, setMeasure] = useState("plants");
+  const [year, setYear] = useState("");
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setReport(null);
+    setError("");
+    api.get("/analytics/output", { params: { interval } })
+      .then(({ data }) => { if (!cancelled) setReport(data); })
+      .catch((requestError) => {
+        if (!cancelled) setError(requestError.response?.data?.message || "Could not load production totals.");
+      });
+    return () => { cancelled = true; };
+  }, [interval]);
+
+  const years = [...new Set((report?.rows || []).map((row) => row.period.slice(0, 4)))];
+  const rows = (report?.rows || []).filter((row) => interval === "year" || !year || row.period.startsWith(year));
+  const totals = rows.reduce((sum, row) => ({
+    initiationBottles: sum.initiationBottles + row.initiationBottles,
+    initiationPlants: sum.initiationPlants + row.initiationPlants,
+    subcultureBottles: sum.subcultureBottles + row.subcultureBottles,
+    subculturePlants: sum.subculturePlants + row.subculturePlants,
+  }), { initiationBottles: 0, initiationPlants: 0, subcultureBottles: 0, subculturePlants: 0 });
+  const initiationKey = measure === "plants" ? "initiationPlants" : "initiationBottles";
+  const subcultureKey = measure === "plants" ? "subculturePlants" : "subcultureBottles";
+  const maxValue = Math.max(1, ...rows.flatMap((row) => [row[initiationKey], row[subcultureKey]]));
+
+  function downloadOutputCsv() {
+    const escape = (value) => `"${String(value).replaceAll('"', '""')}"`;
+    const values = [["Period", "Initiation bottles", "Initiation plants", "Subculture bottles", "Subculture plants"],
+      ...rows.map((row) => [row.period, row.initiationBottles, row.initiationPlants,
+        row.subcultureBottles, row.subculturePlants])];
+    const url = URL.createObjectURL(new Blob([values.map((row) => row.map(escape).join(",")).join("\n")],
+      { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `lab-production-${interval}${year && interval === "month" ? `-${year}` : ""}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  return <section className="panel production-report output-report">
+    <div className="chart-title"><div><h2>Initiation & subculture production</h2><span>Monthly and yearly output, shown separately for each workflow.</span></div>
+      <button type="button" className="secondary compact" onClick={downloadOutputCsv} disabled={!rows.length}>Download report (CSV)</button></div>
+    <div className="report-controls">
+      <label>Group by<select value={interval} onChange={(event) => { setInterval(event.target.value); setYear(""); }}><option value="month">Monthly</option><option value="year">Yearly</option></select></label>
+      <label>Show<select value={measure} onChange={(event) => setMeasure(event.target.value)}><option value="plants">Plants</option><option value="bottles">Bottles</option></select></label>
+      {interval === "month" && <label>Year<select value={year} onChange={(event) => setYear(event.target.value)}><option value="">All years</option>{years.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}
+    </div>
+    {error && <div className="error">{error}</div>}
+    {!report && !error && <p className="muted">Loading production totals…</p>}
+    {report && <>
+      <div className="output-totals">
+        <div><span>Initiation</span><strong>{totals.initiationPlants.toLocaleString()} plants</strong><small>{totals.initiationBottles.toLocaleString()} bottles registered</small></div>
+        <div><span>Subculture</span><strong>{totals.subculturePlants.toLocaleString()} plants</strong><small>{totals.subcultureBottles.toLocaleString()} bottles produced</small></div>
+      </div>
+      {rows.length ? <div className="output-chart-scroll" role="img" aria-label={`${interval === "month" ? "Monthly" : "Yearly"} initiation and subculture ${measure} chart`}>
+        <div className="output-chart">
+          {rows.toReversed().map((row) => <div className="output-chart-group" key={row.period}>
+            <div className="output-bars">
+              <div className="output-bar initiation" style={{ height: `${Math.max(row[initiationKey] ? 2 : 0, row[initiationKey] / maxValue * 100)}%` }} title={`${row.period}: ${row[initiationKey]} initiation ${measure}`} />
+              <div className="output-bar subculture" style={{ height: `${Math.max(row[subcultureKey] ? 2 : 0, row[subcultureKey] / maxValue * 100)}%` }} title={`${row.period}: ${row[subcultureKey]} subculture ${measure}`} />
+            </div>
+            <span>{row.period}</span>
+          </div>)}
+        </div>
+      </div> : <p className="muted">No production was registered for this period.</p>}
+      <div className="output-legend"><span><i className="initiation" /> Initiation</span><span><i className="subculture" /> Subculture</span></div>
+      <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Initiation bottles</th><th>Initiation plants</th><th>Subculture bottles</th><th>Subculture plants</th></tr></thead><tbody>
+        {rows.map((row) => <tr key={row.period}><td><b>{row.period}</b></td><td>{row.initiationBottles.toLocaleString()}</td><td>{row.initiationPlants.toLocaleString()}</td><td>{row.subcultureBottles.toLocaleString()}</td><td>{row.subculturePlants.toLocaleString()}</td></tr>)}
+        {!rows.length && <tr><td colSpan="5" className="empty">No production was registered for this period.</td></tr>}
+      </tbody></table></div>
+      <p className="report-definition">Grouped by bottle registration date. These are historical production totals, so bottles later discarded remain counted in the month or year they were made.</p>
+    </>}
+  </section>;
+}
+
 function AnalyticsPage() {
   const [records, setRecords] = useState([]),
     [production, setProduction] = useState(null),
@@ -544,6 +627,7 @@ function AnalyticsPage() {
         <h1>Laboratory analytics</h1>
         <p className="muted">Review work by technician and period, then explore discard trends below.</p>
       </header>
+      <ProductionOverview />
       <section className="panel production-report">
         <div className="chart-title"><div><h2>Subculture & contamination report</h2><span>Filter by staff member and day, ISO week, or month.</span></div><button type="button" className="secondary compact" onClick={downloadProductionCsv} disabled={!production?.rows.length}>Download report (CSV)</button></div>
         <div className="report-controls">
