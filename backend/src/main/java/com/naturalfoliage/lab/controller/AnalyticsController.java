@@ -1,6 +1,7 @@
 package com.naturalfoliage.lab.controller;
 
 import com.naturalfoliage.lab.model.DiscardRecord;
+import com.naturalfoliage.lab.model.Plant;
 import com.naturalfoliage.lab.model.Subculture;
 import com.naturalfoliage.lab.repository.DiscardRepository;
 import com.naturalfoliage.lab.repository.MotherBottleRepository;
@@ -44,18 +45,24 @@ public class AnalyticsController {
     public record PeriodRow(String period, String technician, String technicianName, long bottles,
                             long plants, long contaminatedBottles, double contaminationRate) {}
     public record ProductionReport(List<TechnicianOption> technicians, List<PeriodRow> rows, Summary summary) {}
-    public record OutputRow(String period, long initiationBottles, long initiationPlants,
+    public record OutputRow(String period, Long plantId, String plantCode, String plantName,
+                            String plantVariety, long initiationBottles, long initiationPlants,
                             long subcultureBottles, long subculturePlants) {}
     public record OutputReport(List<OutputRow> rows) {}
+    private record OutputGroupKey(String period, Long plantId) {}
 
     private static class OutputTotals {
+        final Plant plant;
         long initiationBottles;
         long initiationPlants;
         long subcultureBottles;
         long subculturePlants;
 
+        OutputTotals(Plant plant) { this.plant = plant; }
+
         OutputRow row(String period) {
-            return new OutputRow(period, initiationBottles, initiationPlants,
+            return new OutputRow(period, plant.getId(), plant.getCode(), plant.getName(),
+                plant.getVariety(), initiationBottles, initiationPlants,
                 subcultureBottles, subculturePlants);
         }
     }
@@ -65,24 +72,28 @@ public class AnalyticsController {
         if (!List.of("month", "year").contains(interval)) {
             throw new IllegalArgumentException("Interval must be month or year");
         }
-        Map<String, OutputTotals> groups = new HashMap<>();
+        Map<OutputGroupKey, OutputTotals> groups = new HashMap<>();
         mothers.findAll().forEach(bottle -> {
             if (bottle.getCreatedDate() == null) return;
-            var total = groups.computeIfAbsent(period(bottle.getCreatedDate(), interval),
-                ignored -> new OutputTotals());
+            var plant = bottle.getPlant();
+            var key = new OutputGroupKey(period(bottle.getCreatedDate(), interval), plant.getId());
+            var total = groups.computeIfAbsent(key, ignored -> new OutputTotals(plant));
             total.initiationBottles++;
             total.initiationPlants += bottle.getPlantCount();
         });
         subcultures.findAll().forEach(bottle -> {
             if (bottle.getCreatedDate() == null) return;
-            var total = groups.computeIfAbsent(period(bottle.getCreatedDate(), interval),
-                ignored -> new OutputTotals());
+            var plant = bottle.getParent().getPlant();
+            var key = new OutputGroupKey(period(bottle.getCreatedDate(), interval), plant.getId());
+            var total = groups.computeIfAbsent(key, ignored -> new OutputTotals(plant));
             total.subcultureBottles++;
             total.subculturePlants += bottle.getPlantCount();
         });
         var rows = groups.entrySet().stream()
-            .sorted(Map.Entry.comparingByKey(Comparator.reverseOrder()))
-            .map(entry -> entry.getValue().row(entry.getKey()))
+            .map(entry -> entry.getValue().row(entry.getKey().period()))
+            .sorted(Comparator.comparing(OutputRow::period).reversed()
+                .thenComparing(OutputRow::plantName, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(OutputRow::plantCode, String.CASE_INSENSITIVE_ORDER))
             .toList();
         return new OutputReport(rows);
     }

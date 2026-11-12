@@ -61,6 +61,8 @@
 .report-definition { margin: 0; color: #63776d; font-size: 12px; line-height: 1.6; }
 .report-table { overflow-x: auto; }
 .report-table table { min-width: 700px; }
+.output-report .report-table table { min-width: 880px; }
+.output-variety-name { display: block; margin-top: 3px; color: #60766b; font-size: 11px; }
 .chart-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 16px; padding-bottom: 22px; border-bottom: 1px solid #e5ede9; }
 .chart-title { display: flex; justify-content: space-between; align-items: end; gap: 16px; }
 .chart-title > div:first-child { display: grid; gap: 5px; }

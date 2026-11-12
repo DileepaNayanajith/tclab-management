@@ -3,10 +3,12 @@ package com.naturalfoliage.lab;
 import com.naturalfoliage.lab.model.DiscardRecord;
 import com.naturalfoliage.lab.model.BottleStatus;
 import com.naturalfoliage.lab.model.MotherBottle;
+import com.naturalfoliage.lab.model.Plant;
 import com.naturalfoliage.lab.model.Subculture;
 import com.naturalfoliage.lab.repository.DiscardRepository;
 import com.naturalfoliage.lab.repository.MediaCompositionRepository;
 import com.naturalfoliage.lab.repository.MotherBottleRepository;
+import com.naturalfoliage.lab.repository.PlantRepository;
 import com.naturalfoliage.lab.repository.SubcultureRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +36,7 @@ class AnalyticsReportTests {
     @Autowired DiscardRepository discards;
     @Autowired MotherBottleRepository mothers;
     @Autowired MediaCompositionRepository media;
+    @Autowired PlantRepository plants;
 
     @Test
     void analyticsPermissionGrantsReportsButNotWorkflowRecords() throws Exception {
@@ -59,10 +62,17 @@ class AnalyticsReportTests {
         var december = initiation(template, medium, LocalDate.parse("2030-12-31"), 3);
         var january = initiation(template, medium, LocalDate.parse("2031-01-01"), 5);
         initiation(template, medium, LocalDate.parse("2031-01-02"), 7);
+        var secondPlant = new Plant();
+        secondPlant.setCode("VAR-" + UUID.randomUUID());
+        secondPlant.setName("ZZZ Test variety");
+        secondPlant.setVariety("Test cultivar");
+        secondPlant = plants.save(secondPlant);
+        var otherInitiation = initiation(secondPlant, medium, LocalDate.parse("2031-01-02"), 2);
         var discardedLater = bottle("output-test", LocalDate.parse("2031-01-03"), 11, january, medium);
         discardedLater.setStatus(BottleStatus.DISCARDED);
         subcultures.save(discardedLater);
         bottle("output-test", LocalDate.parse("2031-02-01"), 13, december, medium);
+        bottle("output-test", LocalDate.parse("2031-01-04"), 3, otherInitiation, medium);
 
         var analyst = user("analyst").authorities(new SimpleGrantedAuthority("ROLE_TECHNICIAN"),
             new SimpleGrantedAuthority("ACCESS_ANALYTICS"));
@@ -72,25 +82,42 @@ class AnalyticsReportTests {
             .andExpect(jsonPath("$.rows[0].initiationBottles").value(0))
             .andExpect(jsonPath("$.rows[0].subculturePlants").value(13))
             .andExpect(jsonPath("$.rows[1].period").value("2031-01"))
+            .andExpect(jsonPath("$.rows[1].plantId").value(template.getPlant().getId().intValue()))
+            .andExpect(jsonPath("$.rows[1].plantName").value(template.getPlant().getName()))
             .andExpect(jsonPath("$.rows[1].initiationBottles").value(2))
             .andExpect(jsonPath("$.rows[1].initiationPlants").value(12))
             .andExpect(jsonPath("$.rows[1].subcultureBottles").value(1))
-            .andExpect(jsonPath("$.rows[1].subculturePlants").value(11));
+            .andExpect(jsonPath("$.rows[1].subculturePlants").value(11))
+            .andExpect(jsonPath("$.rows[2].period").value("2031-01"))
+            .andExpect(jsonPath("$.rows[2].plantId").value(secondPlant.getId().intValue()))
+            .andExpect(jsonPath("$.rows[2].plantVariety").value("Test cultivar"))
+            .andExpect(jsonPath("$.rows[2].initiationPlants").value(2))
+            .andExpect(jsonPath("$.rows[2].subculturePlants").value(3));
         mvc.perform(get("/api/analytics/output").with(analyst).param("interval", "year"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.rows[0].period").value("2031"))
             .andExpect(jsonPath("$.rows[0].initiationPlants").value(12))
             .andExpect(jsonPath("$.rows[0].subculturePlants").value(24))
-            .andExpect(jsonPath("$.rows[1].period").value("2030"))
-            .andExpect(jsonPath("$.rows[1].initiationPlants").value(3));
+            .andExpect(jsonPath("$.rows[1].period").value("2031"))
+            .andExpect(jsonPath("$.rows[1].plantId").value(secondPlant.getId().intValue()))
+            .andExpect(jsonPath("$.rows[1].initiationPlants").value(2))
+            .andExpect(jsonPath("$.rows[1].subculturePlants").value(3))
+            .andExpect(jsonPath("$.rows[2].period").value("2030"))
+            .andExpect(jsonPath("$.rows[2].initiationPlants").value(3));
     }
 
     private MotherBottle initiation(MotherBottle template,
                                     com.naturalfoliage.lab.model.MediaComposition medium,
                                     LocalDate date, int plants) {
+        return initiation(template.getPlant(), medium, date, plants);
+    }
+
+    private MotherBottle initiation(Plant plant,
+                                    com.naturalfoliage.lab.model.MediaComposition medium,
+                                    LocalDate date, int plants) {
         var bottle = new MotherBottle();
         bottle.setBarcode("OUTPUT-" + UUID.randomUUID());
-        bottle.setPlant(template.getPlant());
+        bottle.setPlant(plant);
         bottle.setMedia(medium);
         bottle.setTechnician("output-test");
         bottle.setCreatedDate(date);
