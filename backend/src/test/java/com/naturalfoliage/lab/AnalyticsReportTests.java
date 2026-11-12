@@ -1,6 +1,8 @@
 package com.naturalfoliage.lab;
 
 import com.naturalfoliage.lab.model.DiscardRecord;
+import com.naturalfoliage.lab.model.BottleStatus;
+import com.naturalfoliage.lab.model.MotherBottle;
 import com.naturalfoliage.lab.model.Subculture;
 import com.naturalfoliage.lab.repository.DiscardRepository;
 import com.naturalfoliage.lab.repository.MediaCompositionRepository;
@@ -41,9 +43,59 @@ class AnalyticsReportTests {
         mvc.perform(get("/api/analytics/production").with(user("staff").roles("TECHNICIAN")))
             .andExpect(status().isForbidden());
         mvc.perform(get("/api/analytics/production").with(analyst)).andExpect(status().isOk());
+        mvc.perform(get("/api/analytics/output").with(user("staff").roles("TECHNICIAN")))
+            .andExpect(status().isForbidden());
+        mvc.perform(get("/api/analytics/output").with(analyst)).andExpect(status().isOk());
         mvc.perform(get("/api/analytics/discards").with(analyst)).andExpect(status().isOk());
         mvc.perform(get("/api/discards").with(analyst)).andExpect(status().isForbidden());
         mvc.perform(get("/api/subcultures").with(analyst)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @Transactional
+    void monthlyAndYearlyOutputKeepInitiationAndSubcultureSeparate() throws Exception {
+        var template = mothers.findAll().getFirst();
+        var medium = media.findAll().getFirst();
+        var december = initiation(template, medium, LocalDate.parse("2030-12-31"), 3);
+        var january = initiation(template, medium, LocalDate.parse("2031-01-01"), 5);
+        initiation(template, medium, LocalDate.parse("2031-01-02"), 7);
+        var discardedLater = bottle("output-test", LocalDate.parse("2031-01-03"), 11, january, medium);
+        discardedLater.setStatus(BottleStatus.DISCARDED);
+        subcultures.save(discardedLater);
+        bottle("output-test", LocalDate.parse("2031-02-01"), 13, december, medium);
+
+        var analyst = user("analyst").authorities(new SimpleGrantedAuthority("ROLE_TECHNICIAN"),
+            new SimpleGrantedAuthority("ACCESS_ANALYTICS"));
+        mvc.perform(get("/api/analytics/output").with(analyst).param("interval", "month"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.rows[0].period").value("2031-02"))
+            .andExpect(jsonPath("$.rows[0].initiationBottles").value(0))
+            .andExpect(jsonPath("$.rows[0].subculturePlants").value(13))
+            .andExpect(jsonPath("$.rows[1].period").value("2031-01"))
+            .andExpect(jsonPath("$.rows[1].initiationBottles").value(2))
+            .andExpect(jsonPath("$.rows[1].initiationPlants").value(12))
+            .andExpect(jsonPath("$.rows[1].subcultureBottles").value(1))
+            .andExpect(jsonPath("$.rows[1].subculturePlants").value(11));
+        mvc.perform(get("/api/analytics/output").with(analyst).param("interval", "year"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.rows[0].period").value("2031"))
+            .andExpect(jsonPath("$.rows[0].initiationPlants").value(12))
+            .andExpect(jsonPath("$.rows[0].subculturePlants").value(24))
+            .andExpect(jsonPath("$.rows[1].period").value("2030"))
+            .andExpect(jsonPath("$.rows[1].initiationPlants").value(3));
+    }
+
+    private MotherBottle initiation(MotherBottle template,
+                                    com.naturalfoliage.lab.model.MediaComposition medium,
+                                    LocalDate date, int plants) {
+        var bottle = new MotherBottle();
+        bottle.setBarcode("OUTPUT-" + UUID.randomUUID());
+        bottle.setPlant(template.getPlant());
+        bottle.setMedia(medium);
+        bottle.setTechnician("output-test");
+        bottle.setCreatedDate(date);
+        bottle.setPlantCount(plants);
+        return mothers.save(bottle);
     }
 
     @Test
