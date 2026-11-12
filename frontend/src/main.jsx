@@ -401,6 +401,7 @@ function ProductionOverview() {
   const [interval, setInterval] = useState("month");
   const [measure, setMeasure] = useState("plants");
   const [year, setYear] = useState("");
+  const [plantId, setPlantId] = useState("");
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
 
@@ -416,8 +417,23 @@ function ProductionOverview() {
     return () => { cancelled = true; };
   }, [interval]);
 
-  const years = [...new Set((report?.rows || []).map((row) => row.period.slice(0, 4)))];
-  const rows = (report?.rows || []).filter((row) => interval === "year" || !year || row.period.startsWith(year));
+  const varieties = [...new Map((report?.rows || []).map((row) => [row.plantId, {
+    id: row.plantId, code: row.plantCode, name: row.plantName, variety: row.plantVariety,
+  }])).values()].sort((a, b) => a.name.localeCompare(b.name));
+  const varietyRows = (report?.rows || []).filter((row) => !plantId || String(row.plantId) === plantId);
+  const years = [...new Set(varietyRows.map((row) => row.period.slice(0, 4)))];
+  const rows = varietyRows.filter((row) => interval === "year" || !year || row.period.startsWith(year));
+  const groupedPeriods = new Map();
+  rows.forEach((row) => {
+    const total = groupedPeriods.get(row.period) || { period: row.period, initiationBottles: 0,
+      initiationPlants: 0, subcultureBottles: 0, subculturePlants: 0 };
+    total.initiationBottles += row.initiationBottles;
+    total.initiationPlants += row.initiationPlants;
+    total.subcultureBottles += row.subcultureBottles;
+    total.subculturePlants += row.subculturePlants;
+    groupedPeriods.set(row.period, total);
+  });
+  const periodRows = [...groupedPeriods.values()];
   const totals = rows.reduce((sum, row) => ({
     initiationBottles: sum.initiationBottles + row.initiationBottles,
     initiationPlants: sum.initiationPlants + row.initiationPlants,
@@ -426,12 +442,12 @@ function ProductionOverview() {
   }), { initiationBottles: 0, initiationPlants: 0, subcultureBottles: 0, subculturePlants: 0 });
   const initiationKey = measure === "plants" ? "initiationPlants" : "initiationBottles";
   const subcultureKey = measure === "plants" ? "subculturePlants" : "subcultureBottles";
-  const maxValue = Math.max(1, ...rows.flatMap((row) => [row[initiationKey], row[subcultureKey]]));
+  const maxValue = Math.max(1, ...periodRows.flatMap((row) => [row[initiationKey], row[subcultureKey]]));
 
   function downloadOutputCsv() {
     const escape = (value) => `"${String(value).replaceAll('"', '""')}"`;
-    const values = [["Period", "Initiation bottles", "Initiation plants", "Subculture bottles", "Subculture plants"],
-      ...rows.map((row) => [row.period, row.initiationBottles, row.initiationPlants,
+    const values = [["Period", "Plant code", "Plant name", "Variety", "Initiation bottles", "Initiation plants", "Subculture bottles", "Subculture plants"],
+      ...rows.map((row) => [row.period, row.plantCode, row.plantName, row.plantVariety || "", row.initiationBottles, row.initiationPlants,
         row.subcultureBottles, row.subculturePlants])];
     const url = URL.createObjectURL(new Blob([values.map((row) => row.map(escape).join(",")).join("\n")],
       { type: "text/csv;charset=utf-8" }));
@@ -450,6 +466,7 @@ function ProductionOverview() {
     <div className="report-controls">
       <label>Group by<select value={interval} onChange={(event) => { setInterval(event.target.value); setYear(""); }}><option value="month">Monthly</option><option value="year">Yearly</option></select></label>
       <label>Show<select value={measure} onChange={(event) => setMeasure(event.target.value)}><option value="plants">Plants</option><option value="bottles">Bottles</option></select></label>
+      <label>Plant variety<select value={plantId} onChange={(event) => { setPlantId(event.target.value); setYear(""); }}><option value="">All varieties</option>{varieties.map((plant) => <option key={plant.id} value={plant.id}>{plant.code} — {plant.name}</option>)}</select></label>
       {interval === "month" && <label>Year<select value={year} onChange={(event) => setYear(event.target.value)}><option value="">All years</option>{years.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}
     </div>
     {error && <div className="error">{error}</div>}
@@ -459,9 +476,9 @@ function ProductionOverview() {
         <div><span>Initiation</span><strong>{totals.initiationPlants.toLocaleString()} plants</strong><small>{totals.initiationBottles.toLocaleString()} bottles registered</small></div>
         <div><span>Subculture</span><strong>{totals.subculturePlants.toLocaleString()} plants</strong><small>{totals.subcultureBottles.toLocaleString()} bottles produced</small></div>
       </div>
-      {rows.length ? <div className="output-chart-scroll" role="img" aria-label={`${interval === "month" ? "Monthly" : "Yearly"} initiation and subculture ${measure} chart`}>
+      {periodRows.length ? <div className="output-chart-scroll" role="img" aria-label={`${interval === "month" ? "Monthly" : "Yearly"} initiation and subculture ${measure} chart`}>
         <div className="output-chart">
-          {rows.toReversed().map((row) => <div className="output-chart-group" key={row.period}>
+          {periodRows.toReversed().map((row) => <div className="output-chart-group" key={row.period}>
             <div className="output-bars">
               <div className="output-bar initiation" style={{ height: `${Math.max(row[initiationKey] ? 2 : 0, row[initiationKey] / maxValue * 100)}%` }} title={`${row.period}: ${row[initiationKey]} initiation ${measure}`} />
               <div className="output-bar subculture" style={{ height: `${Math.max(row[subcultureKey] ? 2 : 0, row[subcultureKey] / maxValue * 100)}%` }} title={`${row.period}: ${row[subcultureKey]} subculture ${measure}`} />
@@ -471,9 +488,9 @@ function ProductionOverview() {
         </div>
       </div> : <p className="muted">No production was registered for this period.</p>}
       <div className="output-legend"><span><i className="initiation" /> Initiation</span><span><i className="subculture" /> Subculture</span></div>
-      <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Initiation bottles</th><th>Initiation plants</th><th>Subculture bottles</th><th>Subculture plants</th></tr></thead><tbody>
-        {rows.map((row) => <tr key={row.period}><td><b>{row.period}</b></td><td>{row.initiationBottles.toLocaleString()}</td><td>{row.initiationPlants.toLocaleString()}</td><td>{row.subcultureBottles.toLocaleString()}</td><td>{row.subculturePlants.toLocaleString()}</td></tr>)}
-        {!rows.length && <tr><td colSpan="5" className="empty">No production was registered for this period.</td></tr>}
+      <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Plant variety</th><th>Initiation bottles</th><th>Initiation plants</th><th>Subculture bottles</th><th>Subculture plants</th></tr></thead><tbody>
+        {rows.map((row) => <tr key={`${row.period}-${row.plantId}`}><td><b>{row.period}</b></td><td><b>{row.plantCode}</b><br />{row.plantName}{row.plantVariety && <small className="output-variety-name">{row.plantVariety}</small>}</td><td>{row.initiationBottles.toLocaleString()}</td><td>{row.initiationPlants.toLocaleString()}</td><td>{row.subcultureBottles.toLocaleString()}</td><td>{row.subculturePlants.toLocaleString()}</td></tr>)}
+        {!rows.length && <tr><td colSpan="6" className="empty">No production was registered for this period.</td></tr>}
       </tbody></table></div>
       <p className="report-definition">Grouped by bottle registration date. These are historical production totals, so bottles later discarded remain counted in the month or year they were made.</p>
     </>}
