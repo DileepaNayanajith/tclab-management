@@ -58,6 +58,28 @@
 .report-summary > div { display: grid; gap: 6px; padding: 16px; border: 1px solid #e5ede9; border-radius: 12px; background: #f8fbf9; }
 .report-summary span { color: #60766b; font-size: 12px; font-weight: 700; }
 .report-summary strong { color: #214f3b; font-size: 24px; }
+.report-focus { display: grid; gap: 6px; padding: 20px 22px; border: 1px solid #dcebe1; border-radius: 14px; background: #f4faf6; }
+.report-focus span { color: #527361; font-size: 12px; font-weight: 800; }
+.report-focus strong { color: #214f3b; font-size: clamp(26px, 3vw, 38px); line-height: 1.1; }
+.report-focus small { color: #63776d; font-size: 12px; }
+.staff-breakdown { display: grid; gap: 8px; }
+.staff-breakdown-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.staff-breakdown-heading h3 { margin: 0; font-size: 16px; }
+.staff-breakdown-heading small { color: #71827a; font-weight: 700; }
+.staff-metric-row { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 16px; padding: 12px 16px; border: 1px solid #e5ede9; border-radius: 10px; background: #fff; color: #214f3b; text-align: left; cursor: pointer; }
+.staff-metric-row:hover, .staff-metric-row:focus-visible { background: #f4faf6; border-color: #b8d6c5; }
+.staff-metric-row span { display: grid; gap: 3px; }
+.staff-metric-row small { color: #71827a; }
+.staff-metric-row strong { font-size: 17px; white-space: nowrap; }
+.report-period-row { cursor: default; }
+.report-period-row:hover { background: #fff; border-color: #e5ede9; }
+.report-details { border: 1px solid #e5ede9; border-radius: 12px; overflow: hidden; }
+.report-details summary { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 15px 17px; color: #214f3b; font-weight: 800; cursor: pointer; list-style: none; }
+.report-details summary::-webkit-details-marker { display: none; }
+.report-details summary::after { content: "⌄"; font-size: 18px; margin-left: auto; }
+.report-details[open] summary::after { transform: rotate(180deg); }
+.report-details summary span { color: #71827a; font-size: 12px; font-weight: 700; }
+.report-details .report-table { padding: 0 16px 16px; }
 .report-definition { margin: 0; color: #63776d; font-size: 12px; line-height: 1.6; }
 .report-table { overflow-x: auto; }
 .report-table table { min-width: 700px; }
