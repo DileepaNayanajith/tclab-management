@@ -135,9 +135,10 @@ class MotherBottleController {
         bottles.forEach(bottle -> bottle.setPrinted(input.printed()));
         return repository.saveAll(bottles);
     }
-    @PostMapping @ResponseStatus(HttpStatus.CREATED) MotherBottle create(@Valid @RequestBody MotherRequest input, Authentication auth) {
+    @PostMapping @ResponseStatus(HttpStatus.CREATED) @Transactional MotherBottle create(@Valid @RequestBody MotherRequest input, Authentication auth) {
         var plant = plants.findById(input.plantId()).orElseThrow(() -> new IllegalArgumentException("Plant not found"));
         var composition = media.findById(input.mediaId()).orElseThrow(() -> new IllegalArgumentException("Media not found"));
+        consumeMedia(composition, 1);
         return repository.save(newBottle(plant, composition, input.plantCount(), input.cycle(), input.laminaFlow(), auth.getName(), nextBarcode(plant.getCode())));
     }
 
@@ -145,6 +146,7 @@ class MotherBottleController {
     List<MotherBottle> createBatch(@Valid @RequestBody MotherBatchRequest input, Authentication auth) {
         var plant = plants.findById(input.plantId()).orElseThrow(() -> new IllegalArgumentException("Plant not found"));
         var composition = media.findById(input.mediaId()).orElseThrow(() -> new IllegalArgumentException("Media not found"));
+        consumeMedia(composition, input.bottleCount());
         var created = new java.util.ArrayList<MotherBottle>(input.bottleCount());
         var reserved = new java.util.HashSet<String>();
         var firstBarcode = nextBarcode(plant.getCode());
@@ -159,6 +161,12 @@ class MotherBottleController {
             created.add(newBottle(plant, composition, input.plantCount(), input.cycle(), input.laminaFlow(), auth.getName(), barcode));
         }
         return repository.saveAll(created);
+    }
+
+    private void consumeMedia(MediaComposition composition, int bottleCount) {
+        if (media.consumeBottles(composition.getId(), bottleCount) == 0)
+            throw new IllegalStateException("Not enough media bottles. Available: " +
+                media.findById(composition.getId()).orElseThrow().getAvailableBottles());
     }
 
     private MotherBottle newBottle(Plant plant, MediaComposition composition, int plantCount,
@@ -225,8 +233,8 @@ class SubcultureController {
         int cycle = parentCycle + 1;
         int totalBottles = input.lines().stream().mapToInt(LineRequest::bottleCount).sum();
         var selectedMedia = media.findById(input.mediaId()).orElseThrow(() -> new IllegalArgumentException("Media not found"));
-        if (selectedMedia.getAvailableBottles() < totalBottles) throw new IllegalStateException("Not enough media bottles. Available: " + selectedMedia.getAvailableBottles());
-        selectedMedia.setAvailableBottles(selectedMedia.getAvailableBottles() - totalBottles); media.save(selectedMedia);
+        if (media.consumeBottles(selectedMedia.getId(), totalBottles) == 0)
+            throw new IllegalStateException("Not enough media bottles. Available: " + selectedMedia.getAvailableBottles());
         var now = LocalDate.now(); int week = now.get(WeekFields.ISO.weekOfWeekBasedYear());
         scannedSubculture.ifPresent(item -> item.setStatus(BottleStatus.USED));
         if (scannedSubculture.isEmpty()) parent.setStatus(BottleStatus.USED);

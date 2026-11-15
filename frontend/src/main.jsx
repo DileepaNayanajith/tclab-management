@@ -2358,6 +2358,14 @@ function WorkflowPage({ type, user }) {
       await load();
     } catch (e) {
       setError(e.response?.data?.message || "Could not save this entry.");
+      if (type === "Plant Initiation") {
+        try {
+          const { data } = await api.get("/workflow/options");
+          setOptions(data);
+        } catch {
+          // Keep the save error visible if the stock refresh also fails.
+        }
+      }
     }
   }
   async function removeInitiation(item) {
@@ -2426,6 +2434,10 @@ function WorkflowPage({ type, user }) {
     setPendingPrintIds([]);
     setPrintStatusError("");
   }
+  const selectedInitiationMedia = options.media.find((item) => String(item.id) === String(form.mediaId));
+  const requiredInitiationBottles = Number(form.bottleCount) || 0;
+  const insufficientInitiationStock = selectedInitiationMedia &&
+    requiredInitiationBottles > selectedInitiationMedia.availableBottles;
   const select = (key, label, items) => (
     <label>
       {label}
@@ -2516,6 +2528,13 @@ function WorkflowPage({ type, user }) {
                   required
                 />
               </label>
+              {selectedInitiationMedia && (
+                <div className={`stock-status${insufficientInitiationStock ? " low" : ""}`} role="status">
+                  Media bottles available: <b>{selectedInitiationMedia.availableBottles}</b> ·
+                  Required: <b>{requiredInitiationBottles}</b>
+                  {insufficientInitiationStock && <div>Not enough media bottles for this initiation.</div>}
+                </div>
+              )}
               <label>
                 Cycle
                 <input
@@ -2610,7 +2629,7 @@ function WorkflowPage({ type, user }) {
               </label>
             </>
           )}
-          <button>
+          <button disabled={type === "Plant Initiation" && insufficientInitiationStock}>
             {type === "Discards" ? "Save discard" : "Register entry"}
           </button>
         </form>

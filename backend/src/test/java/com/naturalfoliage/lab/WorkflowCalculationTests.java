@@ -120,6 +120,7 @@ class WorkflowCalculationTests {
         long initiationId = json.readTree(initiationResponse).get("id").asLong();
         String shortScanCode = "91%08d".formatted(initiationId);
         assertThat(dashboardPlantTotal()).isEqualTo(plantsBeforeInitiation + 6);
+        assertThat(media.findById(mediaId).orElseThrow().getAvailableBottles()).isEqualTo(9);
 
         mvc.perform(get("/api/workflow/scan/{barcode}", shortScanCode).with(httpBasic("admin", "ChangeMe123!")))
             .andExpect(status().isOk())
@@ -136,7 +137,7 @@ class WorkflowCalculationTests {
         String discardBarcode = created.get(1).get("barcode").asText();
         String exitScanCode = "92%08d".formatted(created.get(0).get("id").asLong());
         String discardScanCode = "92%08d".formatted(created.get(1).get("id").asLong());
-        assertThat(media.findById(mediaId).orElseThrow().getAvailableBottles()).isEqualTo(8);
+        assertThat(media.findById(mediaId).orElseThrow().getAvailableBottles()).isEqualTo(7);
         assertThat(mothers.findByBarcode(parentBarcode).orElseThrow().getStatus()).isEqualTo(BottleStatus.USED);
         assertThat(dashboardPlantTotal()).isEqualTo(plantsBeforeInitiation + 6);
 

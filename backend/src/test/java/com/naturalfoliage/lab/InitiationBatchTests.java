@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:initiationbatch;MODE=MySQL;DB_CLOSE_DELAY=-1")
 @AutoConfigureMockMvc
@@ -32,6 +33,9 @@ class InitiationBatchTests {
     @Test void createsSeparateScannableRecordsAndRejectsInvalidBatches() throws Exception {
         long plantId = plants.findAll().getFirst().getId();
         long mediaId = media.findAll().getFirst().getId();
+        var composition = media.findById(mediaId).orElseThrow();
+        composition.setAvailableBottles(4);
+        media.saveAndFlush(composition);
         long before = mothers.count();
         var staff = user("staff").authorities(
             new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_TECHNICIAN"),
@@ -62,6 +66,15 @@ class InitiationBatchTests {
             assertThat(mothers.findByBarcode(barcode)).isPresent();
         }
         assertThat(mothers.count()).isEqualTo(before + 3);
+        assertThat(media.findById(mediaId).orElseThrow().getAvailableBottles()).isEqualTo(1);
+
+        mvc.perform(post("/api/mother-bottles/batch").with(staff)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload(plantId, mediaId, 2)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Not enough media bottles. Available: 1"));
+        assertThat(mothers.count()).isEqualTo(before + 3);
+        assertThat(media.findById(mediaId).orElseThrow().getAvailableBottles()).isEqualTo(1);
 
         mvc.perform(post("/api/mother-bottles/batch").with(staff)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -74,6 +87,13 @@ class InitiationBatchTests {
                 .content(payload(plantId, mediaId, 1)))
             .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         assertThat(barcodes.add(json.readTree(nextResponse).get(0).get("barcode").asText())).isTrue();
+        assertThat(media.findById(mediaId).orElseThrow().getAvailableBottles()).isZero();
+
+        mvc.perform(post("/api/mother-bottles").with(staff)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"plantId\":" + plantId + ",\"mediaId\":" + mediaId + ",\"plantCount\":5,\"cycle\":2}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Not enough media bottles. Available: 0"));
     }
 
     private String payload(long plantId, long mediaId, int bottleCount) {
