@@ -2310,14 +2310,123 @@ function SalesPage() {
   );
 }
 
+function HardeningExitReport({ refreshKey }) {
+  const [interval, setInterval] = useState("month");
+  const [plantCode, setPlantCode] = useState("");
+  const [year, setYear] = useState("");
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setReport(null);
+    setError("");
+    api.get("/plant-exits/summary", { params: { interval } })
+      .then(({ data }) => { if (!cancelled) setReport(data); })
+      .catch((requestError) => {
+        if (!cancelled) setError(requestError.response?.data?.message || "Could not load hardening exit report.");
+      });
+    return () => { cancelled = true; };
+  }, [interval, refreshKey]);
+
+  const varieties = [...new Map((report?.rows || []).map((row) => [row.plantCode, row.plantName])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1]));
+  const varietyRows = (report?.rows || []).filter((row) => !plantCode || row.plantCode === plantCode);
+  const years = [...new Set(varietyRows.map((row) => row.period.slice(0, 4)))];
+  const rows = varietyRows.filter((row) => interval === "year" || !year || row.period.startsWith(year));
+  const totals = rows.reduce((sum, row) => ({ exits: sum.exits + row.exits, plants: sum.plants + row.plants }),
+    { exits: 0, plants: 0 });
+  const periods = new Map();
+  rows.forEach((row) => {
+    const total = periods.get(row.period) || { period: row.period, exits: 0, plants: 0 };
+    total.exits += row.exits;
+    total.plants += row.plants;
+    periods.set(row.period, total);
+  });
+
+  return <section className="panel production-report hardening-report">
+    <div className="chart-title"><div><h2>Hardening exit report</h2><span>Monthly and yearly totals for plants released from the lab.</span></div></div>
+    <div className="report-controls">
+      <label>Group by<select value={interval} onChange={(event) => { setInterval(event.target.value); setYear(""); }}><option value="month">Monthly</option><option value="year">Yearly</option></select></label>
+      <label>Plant variety<select value={plantCode} onChange={(event) => { setPlantCode(event.target.value); setYear(""); }}><option value="">All varieties</option>{varieties.map(([code, name]) => <option value={code} key={code}>{code} — {name}</option>)}</select></label>
+      {interval === "month" && <label>Year<select value={year} onChange={(event) => setYear(event.target.value)}><option value="">All years</option>{years.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}
+    </div>
+    {error && <div className="error">{error}</div>}
+    {!report && !error && <p className="muted">Loading hardening exits…</p>}
+    {report && <>
+      <div className="output-totals">
+        <div><span>Plants sent to hardening</span><strong>{totals.plants.toLocaleString()}</strong></div>
+        <div><span>Hardening exits</span><strong>{totals.exits.toLocaleString()}</strong></div>
+      </div>
+      <div className="staff-breakdown">
+        <div className="staff-breakdown-heading"><h3>{interval === "month" ? "Recent months" : "Recent years"}</h3><small>Plants · exits</small></div>
+        {[...periods.values()].slice(0, 6).map((period) => <div className="staff-metric-row report-period-row" key={period.period}><span><b>{period.period}</b><small>{period.exits.toLocaleString()} exits</small></span><strong>{period.plants.toLocaleString()} plants</strong></div>)}
+        {!periods.size && <p className="muted">No hardening exits match these filters.</p>}
+      </div>
+      <details className="report-details"><summary>View exits by variety <span>{rows.length} rows</span></summary>
+        <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Plant variety</th><th>Exits</th><th>Plants sent</th></tr></thead><tbody>
+          {rows.map((row) => <tr key={`${row.period}-${row.plantCode}`}><td><b>{row.period}</b></td><td><b>{row.plantCode}</b><br />{row.plantName}</td><td>{row.exits.toLocaleString()}</td><td><b>{row.plants.toLocaleString()}</b></td></tr>)}
+          {!rows.length && <tr><td colSpan="4" className="empty">No hardening exits match these filters.</td></tr>}
+        </tbody></table></div>
+      </details>
+    </>}
+  </section>;
+}
+
 function PlantExitPage({ user }) {
-  const [rows,setRows]=useState([]),[options,setOptions]=useState({bottles:[]}),[barcode,setBarcode]=useState(''),[scan,setScan]=useState(null),[quantity,setQuantity]=useState(''),[reference,setReference]=useState(''),[error,setError]=useState('');
-  async function load(){const [exits,lookups]=await Promise.all([api.get('/plant-exits'),api.get('/workflow/options')]);setRows(exits.data);setOptions(lookups.data)}
-  useEffect(()=>{load()},[]);
-  async function detect(){setError('');try{const {data}=await api.get(`/workflow/scan/${encodeURIComponent(barcode)}`);setScan(data);setQuantity(data.plantCount)}catch(e){setScan(null);setError(e.response?.data?.message||'Barcode not found.')}}
-  async function save(e){e.preventDefault();setError('');try{await api.post('/plant-exits',{barcode,quantity:Number(quantity),destination:'HARDENING',reference});setBarcode('');setScan(null);setQuantity('');setReference('');await load()}catch(e){setError(e.response?.data?.message||'Could not record hardening exit.')}}
-  const admin=user.role==='ADMIN';
-  return <><header><p className="eyebrow">HARDENING</p><h1>Plants sent for hardening</h1><p className="muted">Record healthy plants moved from the laboratory to hardening. Customer sales are handled only through Sales / POS.</p></header><section className="split workflow-layout"><form className="panel form" onSubmit={save}><h2>Release to hardening</h2><label>Scan/read subculture barcode<input list="exit-barcodes" value={barcode} onChange={e=>setBarcode(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();detect()}}} required/></label><datalist id="exit-barcodes">{options.bottles.filter(item=>item.label.includes('Subculture')).map(item=><option value={item.value} key={item.value}>{item.label}</option>)}</datalist><button type="button" className="secondary" onClick={detect}>Detect barcode</button>{error&&<div className="error">{error}</div>}{scan&&<><div className="stock-status"><b>{scan.plantCode} — {scan.plantName}</b><br/>Available in bottle: {scan.plantCount} · {scan.rooting?'Rooting':'Multiply'}</div><label>Quantity sent to hardening<input type="number" min="1" max={scan.plantCount} value={quantity} onChange={e=>setQuantity(e.target.value)} required/></label><label>Hardening location / reference<input value={reference} onChange={e=>setReference(e.target.value)} placeholder="Optional reference"/></label><button>Confirm hardening exit</button></>}</form><section className="panel table-wrap"><table><thead><tr><th>Date / time</th><th>Plant</th><th>Barcode</th><th>Quantity</th><th>Reference</th>{admin&&<th>Released by</th>}</tr></thead><tbody>{rows.filter(item=>item.destination==='HARDENING').map(item=><tr key={item.id}><td>{new Date(item.exitedAt).toLocaleString()}</td><td>{item.plantCode} — {item.plantName}</td><td><b>{item.barcode}</b></td><td>{item.quantity}</td><td>{item.reference||'—'}</td>{admin&&<td>{item.technician}</td>}</tr>)}{!rows.some(item=>item.destination==='HARDENING')&&<tr><td colSpan={admin?6:5} className="empty">No hardening exits yet.</td></tr>}</tbody></table></section></section></>
+  const [rows, setRows] = useState([]), [options, setOptions] = useState({ bottles: [] });
+  const [barcode, setBarcode] = useState(""), [scan, setScan] = useState(null);
+  const [quantity, setQuantity] = useState(""), [reference, setReference] = useState("");
+  const [error, setError] = useState(""), [reportRefresh, setReportRefresh] = useState(0);
+  async function load() {
+    const [exits, lookups] = await Promise.all([api.get("/plant-exits"), api.get("/workflow/options")]);
+    setRows(exits.data);
+    setOptions(lookups.data);
+  }
+  useEffect(() => { load(); }, []);
+  async function detect() {
+    setError("");
+    try {
+      const { data } = await api.get(`/workflow/scan/${encodeURIComponent(barcode)}`);
+      setScan(data);
+      setQuantity(data.plantCount);
+    } catch (requestError) {
+      setScan(null);
+      setError(requestError.response?.data?.message || "Barcode not found.");
+    }
+  }
+  async function save(event) {
+    event.preventDefault();
+    setError("");
+    try {
+      await api.post("/plant-exits", { barcode, quantity: Number(quantity), destination: "HARDENING", reference });
+      setBarcode(""); setScan(null); setQuantity(""); setReference("");
+      setReportRefresh((value) => value + 1);
+      await load();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Could not record hardening exit.");
+    }
+  }
+  const admin = user.role === "ADMIN";
+  const hardeningRows = rows.filter((item) => item.destination === "HARDENING");
+  return <>
+    <header><p className="eyebrow">HARDENING</p><h1>Plants sent for hardening</h1><p className="muted">Record healthy plants moved from the laboratory to hardening. Customer sales are handled only through Sales / POS.</p></header>
+    <section className="split workflow-layout">
+      <form className="panel form" onSubmit={save}>
+        <h2>Release to hardening</h2>
+        <label>Scan/read subculture barcode<input list="exit-barcodes" value={barcode} onChange={(event) => setBarcode(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); detect(); } }} required /></label>
+        <datalist id="exit-barcodes">{options.bottles.filter((item) => item.label.includes("Subculture")).map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</datalist>
+        <button type="button" className="secondary" onClick={detect}>Detect barcode</button>
+        {error && <div className="error">{error}</div>}
+        {scan && <><div className="stock-status"><b>{scan.plantCode} — {scan.plantName}</b><br />Available in bottle: {scan.plantCount} · {scan.rooting ? "Rooting" : "Multiply"}</div><label>Quantity sent to hardening<input type="number" min="1" max={scan.plantCount} value={quantity} onChange={(event) => setQuantity(event.target.value)} required /></label><label>Hardening location / reference<input value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Optional reference" /></label><button>Confirm hardening exit</button></>}
+      </form>
+      <section className="panel table-wrap hardening-recent"><table><thead><tr><th>Date / time</th><th>Plant</th><th>Barcode</th><th>Quantity</th><th>Reference</th>{admin && <th>Released by</th>}</tr></thead><tbody>
+        {hardeningRows.map((item) => <tr key={item.id}><td>{new Date(item.exitedAt).toLocaleString()}</td><td>{item.plantCode} — {item.plantName}</td><td><b>{item.barcode}</b></td><td>{item.quantity}</td><td>{item.reference || "—"}</td>{admin && <td>{item.technician}</td>}</tr>)}
+        {!hardeningRows.length && <tr><td colSpan={admin ? 6 : 5} className="empty">No hardening exits yet.</td></tr>}
+      </tbody></table></section>
+    </section>
+    <HardeningExitReport refreshKey={reportRefresh} />
+  </>;
 }
 
 function WorkflowPage({ type, user }) {
