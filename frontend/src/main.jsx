@@ -488,10 +488,12 @@ function ProductionOverview() {
         </div>
       </div> : <p className="muted">No production was registered for this period.</p>}
       <div className="output-legend"><span><i className="initiation" /> Initiation</span><span><i className="subculture" /> Subculture</span></div>
-      <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Plant variety</th><th>Initiation bottles</th><th>Initiation plants</th><th>Subculture bottles</th><th>Subculture plants</th></tr></thead><tbody>
-        {rows.map((row) => <tr key={`${row.period}-${row.plantId}`}><td><b>{row.period}</b></td><td><b>{row.plantCode}</b><br />{row.plantName}{row.plantVariety && <small className="output-variety-name">{row.plantVariety}</small>}</td><td>{row.initiationBottles.toLocaleString()}</td><td>{row.initiationPlants.toLocaleString()}</td><td>{row.subcultureBottles.toLocaleString()}</td><td>{row.subculturePlants.toLocaleString()}</td></tr>)}
-        {!rows.length && <tr><td colSpan="6" className="empty">No production was registered for this period.</td></tr>}
-      </tbody></table></div>
+      <details className="report-details"><summary>View production by variety <span>{rows.length} rows</span></summary>
+        <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Plant variety</th><th>Initiation bottles</th><th>Initiation plants</th><th>Subculture bottles</th><th>Subculture plants</th></tr></thead><tbody>
+          {rows.map((row) => <tr key={`${row.period}-${row.plantId}`}><td><b>{row.period}</b></td><td><b>{row.plantCode}</b><br />{row.plantName}{row.plantVariety && <small className="output-variety-name">{row.plantVariety}</small>}</td><td>{row.initiationBottles.toLocaleString()}</td><td>{row.initiationPlants.toLocaleString()}</td><td>{row.subcultureBottles.toLocaleString()}</td><td>{row.subculturePlants.toLocaleString()}</td></tr>)}
+          {!rows.length && <tr><td colSpan="6" className="empty">No production was registered for this period.</td></tr>}
+        </tbody></table></div>
+      </details>
       <p className="report-definition">Grouped by bottle registration date. These are historical production totals, so bottles later discarded remain counted in the month or year they were made.</p>
     </>}
   </section>;
