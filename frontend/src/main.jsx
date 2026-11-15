@@ -2503,6 +2503,16 @@ function WorkflowPage({ type, user }) {
                 <small>First bottle barcode · each additional bottle gets its own barcode</small>
               </div>
               {select("mediaId", "Media composition", options.media)}
+              <div className={`stock-status${insufficientInitiationStock ? " low" : ""}`} role="status" aria-live="polite">
+                {selectedInitiationMedia ? (
+                  <>
+                    Media bottles available now: <b>{selectedInitiationMedia.availableBottles}</b> ·
+                    This entry: <b>{requiredInitiationBottles}</b> ·
+                    After save: <b>{insufficientInitiationStock ? "—" : selectedInitiationMedia.availableBottles - requiredInitiationBottles}</b>
+                    {insufficientInitiationStock && <div>Not enough media bottles for this initiation.</div>}
+                  </>
+                ) : "Select a media composition to see remaining bottle stock."}
+              </div>
               <label>
                 Number of plants per bottle
                 <input
@@ -2528,13 +2538,6 @@ function WorkflowPage({ type, user }) {
                   required
                 />
               </label>
-              {selectedInitiationMedia && (
-                <div className={`stock-status${insufficientInitiationStock ? " low" : ""}`} role="status">
-                  Media bottles available: <b>{selectedInitiationMedia.availableBottles}</b> ·
-                  Required: <b>{requiredInitiationBottles}</b>
-                  {insufficientInitiationStock && <div>Not enough media bottles for this initiation.</div>}
-                </div>
-              )}
               <label>
                 Cycle
                 <input
