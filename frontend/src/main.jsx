@@ -624,8 +624,8 @@ function AnalyticsPage() {
   function downloadProductionCsv() {
     if (!production) return;
     const escape = (value) => `"${String(value).replaceAll('"', '""')}"`;
-    const rows = [["Period", "Technician", "Bottles produced", "Plants subcultured", "Contaminated bottles", "Contamination rate (%)"],
-      ...production.rows.map((row) => [row.period, row.technicianName, row.bottles, row.plants,
+    const rows = [["Period", "Technician", "Initiation bottles", "Plants initiated", "Subculture bottles", "Plants subcultured", "Contaminated bottles", "Contamination rate (%)"],
+      ...production.rows.map((row) => [row.period, row.technicianName, row.initiationBottles, row.initiationPlants, row.bottles, row.plants,
         row.contaminatedBottles, row.contaminationRate])];
     const url = URL.createObjectURL(new Blob([rows.map((row) => row.map(escape).join(",")).join("\n")],
       { type: "text/csv;charset=utf-8" }));
@@ -639,20 +639,30 @@ function AnalyticsPage() {
   }
 
   const reportMetrics = {
+    initiationPlants: { label: "Plants initiated", key: "initiationPlants" },
+    initiationBottles: { label: "Initiation bottles", key: "initiationBottles" },
     plants: { label: "Plants subcultured", key: "plants" },
-    bottles: { label: "Bottles produced", key: "bottles" },
+    bottles: { label: "Subculture bottles", key: "bottles" },
     contaminatedBottles: { label: "Contaminated bottles", key: "contaminatedBottles" },
     contaminationRate: { label: "Contamination rate", key: "contaminationRate" },
   };
   const selectedReportMetric = reportMetrics[reportMetric];
+  const reportContext = (total) => reportMetric === "contaminationRate"
+    ? `${total.contaminatedBottles.toLocaleString()} contaminated of ${total.bottles.toLocaleString()} subculture bottles`
+    : reportMetric.startsWith("initiation")
+      ? `${total.initiationBottles.toLocaleString()} initiation bottles in the selected dates`
+      : `${total.bottles.toLocaleString()} subculture bottles in the selected dates`;
   const formatReportMetric = (total) => reportMetric === "contaminationRate"
     ? `${total.bottles ? (100 * total.contaminatedBottles / total.bottles).toFixed(1) : "0.0"}%`
     : total[selectedReportMetric.key].toLocaleString();
   const staffTotals = new Map();
   (production?.rows || []).forEach((row) => {
     const total = staffTotals.get(row.technician) || {
-      username: row.technician, name: row.technicianName, bottles: 0, plants: 0, contaminatedBottles: 0,
+      username: row.technician, name: row.technicianName, initiationBottles: 0,
+      initiationPlants: 0, bottles: 0, plants: 0, contaminatedBottles: 0,
     };
+    total.initiationBottles += row.initiationBottles;
+    total.initiationPlants += row.initiationPlants;
     total.bottles += row.bottles;
     total.plants += row.plants;
     total.contaminatedBottles += row.contaminatedBottles;
@@ -661,7 +671,10 @@ function AnalyticsPage() {
   const staffBreakdown = [...staffTotals.values()].sort((a, b) => a.name.localeCompare(b.name));
   const periodTotals = new Map();
   (production?.rows || []).forEach((row) => {
-    const total = periodTotals.get(row.period) || { period: row.period, bottles: 0, plants: 0, contaminatedBottles: 0 };
+    const total = periodTotals.get(row.period) || { period: row.period, initiationBottles: 0,
+      initiationPlants: 0, bottles: 0, plants: 0, contaminatedBottles: 0 };
+    total.initiationBottles += row.initiationBottles;
+    total.initiationPlants += row.initiationPlants;
     total.bottles += row.bottles;
     total.plants += row.plants;
     total.contaminatedBottles += row.contaminatedBottles;
@@ -678,7 +691,7 @@ function AnalyticsPage() {
       </header>
       <ProductionOverview />
       <section className="panel production-report">
-        <div className="chart-title"><div><h2>Subculture & contamination report</h2><span>Choose a staff member, a metric, and a day, ISO week, or month.</span></div><button type="button" className="secondary compact" onClick={downloadProductionCsv} disabled={!production?.rows.length}>Download full report (CSV)</button></div>
+        <div className="chart-title"><div><h2>Initiation, subculture & contamination report</h2><span>Choose a staff member, a metric, and a day, ISO week, or month.</span></div><button type="button" className="secondary compact" onClick={downloadProductionCsv} disabled={!production?.rows.length}>Download full report (CSV)</button></div>
         <div className="report-controls">
           <label>Technician<select value={technician} onChange={(event) => setTechnician(event.target.value)}><option value="">All staff</option>{(production?.technicians || []).map((person) => <option key={person.username} value={person.username}>{person.name} ({person.username})</option>)}</select></label>
           <label>Show metric<select value={reportMetric} onChange={(event) => setReportMetric(event.target.value)}>{Object.entries(reportMetrics).map(([key, metric]) => <option key={key} value={key}>{metric.label}</option>)}</select></label>
@@ -689,13 +702,13 @@ function AnalyticsPage() {
         {productionError && <div className="error">{productionError}</div>}
         {!production && !productionError && <p className="muted">Loading report…</p>}
         {production && <>
-          <div className="report-focus"><span>{selectedReportMetric.label} · {technician ? production.technicians.find((person) => person.username === technician)?.name || technician : "All staff"}</span><strong>{formatReportMetric(production.summary)}</strong><small>{reportMetric === "contaminationRate" ? `${production.summary.contaminatedBottles.toLocaleString()} contaminated of ${production.summary.bottles.toLocaleString()} bottles produced` : `${production.summary.bottles.toLocaleString()} bottles produced in the selected dates`}</small></div>
+          <div className="report-focus"><span>{selectedReportMetric.label} · {technician ? production.technicians.find((person) => person.username === technician)?.name || technician : "All staff"}</span><strong>{formatReportMetric(production.summary)}</strong><small>{reportContext(production.summary)}</small></div>
           <div className="staff-breakdown">
             <div className="staff-breakdown-heading"><h3>By staff member</h3>{technician && <button type="button" className="secondary compact" onClick={() => setTechnician("")}>Show all staff</button>}</div>
             {staffBreakdown.map((person) => <button type="button" className="staff-metric-row" key={person.username} onClick={() => setTechnician(person.username)} aria-label={`View ${person.name} report`}>
               <span><b>{person.name}</b><small>{person.username}</small></span><strong>{formatReportMetric(person)}</strong>
             </button>)}
-            {!staffBreakdown.length && <p className="muted">No subculture work matches these filters.</p>}
+            {!staffBreakdown.length && <p className="muted">No initiation or subculture work matches these filters.</p>}
           </div>
           <div className="staff-breakdown">
             <div className="staff-breakdown-heading"><h3>Recent {interval === "day" ? "days" : interval === "week" ? "weeks" : "months"}</h3><small>{selectedReportMetric.label}</small></div>
@@ -704,7 +717,7 @@ function AnalyticsPage() {
           </div>
           {reportMetric === "contaminationRate" && <p className="report-definition">Contamination rate = bottles made in the selected period that were later discarded for contamination ÷ all subculture bottles made in that period. Plant-death and other non-contamination discards are excluded.</p>}
           <details className="report-details"><summary>View detailed period table <span>{production.rows.length} rows</span></summary>
-            <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Technician</th><th>Bottles</th><th>Plants subcultured</th><th>Contaminated bottles</th><th>Rate</th></tr></thead><tbody>{production.rows.map((row) => <tr key={`${row.period}-${row.technician}`}><td>{row.period}</td><td>{row.technicianName}</td><td>{row.bottles}</td><td><b>{row.plants}</b></td><td>{row.contaminatedBottles}</td><td><b>{row.contaminationRate.toFixed(1)}%</b></td></tr>)}{!production.rows.length && <tr><td colSpan="6" className="empty">No subculture bottles match these filters.</td></tr>}</tbody></table></div>
+            <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Technician</th><th>Initiation bottles</th><th>Plants initiated</th><th>Subculture bottles</th><th>Plants subcultured</th><th>Contaminated bottles</th><th>Rate</th></tr></thead><tbody>{production.rows.map((row) => <tr key={`${row.period}-${row.technician}`}><td>{row.period}</td><td>{row.technicianName}</td><td>{row.initiationBottles}</td><td><b>{row.initiationPlants}</b></td><td>{row.bottles}</td><td><b>{row.plants}</b></td><td>{row.contaminatedBottles}</td><td><b>{row.contaminationRate.toFixed(1)}%</b></td></tr>)}{!production.rows.length && <tr><td colSpan="8" className="empty">No initiation or subculture bottles match these filters.</td></tr>}</tbody></table></div>
           </details>
         </>}
       </section>
