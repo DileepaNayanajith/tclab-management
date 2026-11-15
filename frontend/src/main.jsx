@@ -730,7 +730,7 @@ function AnalyticsPage() {
       </section>
       <section className="panel analytics-panel">
         <div className="chart-controls">
-          <label>Reason filter<select value={reasonFilter} onChange={(event) => setReasonFilter(event.target.value)}><option>All</option><option>Bacterial</option><option>Fungal</option><option>Mites</option><option>Plant dead</option><option>Other</option></select></label>
+          <label>Reason filter<select value={reasonFilter} onChange={(event) => setReasonFilter(event.target.value)}><option>All</option><option>Bacterial</option><option>Fungal</option><option>Lid fungus</option><option>Mites</option><option>Plant dead</option><option>Other</option></select></label>
           <label>X-axis<select value={xAxis} onChange={(event) => setXAxis(event.target.value)}><option value="month">Year / month</option><option value="year">Year</option><option value="laminaFlow">Lamina flow</option><option value="technician">Subculture technician</option><option value="discardedBy">Discarded by</option><option value="plant">Plant variety</option><option value="reason">Discard reason</option><option value="cycle">Culture cycle</option><option value="week">Culture week</option></select></label>
           <label>Y-axis<select value={yAxis} onChange={(event) => setYAxis(event.target.value)}><option value="plants">Number of plants affected</option><option value="bottles">Number of bottles discarded</option></select></label>
           <label>Chart type<select value={chartType} onChange={(event) => setChartType(event.target.value)}><option value="auto">Automatic (recommended)</option><option value="line">Line chart</option><option value="bar">Bar chart</option></select></label>
@@ -2088,7 +2088,7 @@ function DiscardPage({ user }) {
             <legend>Discard reason</legend>
             <p>Select every reason that applies.</p>
             <div>
-              {["Bacterial", "Fungal", "Mites", "Plant dead", "Other"].map(
+              {["Bacterial", "Fungal", "Lid fungus", "Mites", "Plant dead", "Other"].map(
                 (reason) => (
                   <label className="access-option" key={reason}>
                     <input
@@ -2683,7 +2683,7 @@ function WorkflowPage({ type, user }) {
                 <textarea
                   value={form.reason}
                   onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                  placeholder="Bacterial, fungal, mites, plant dead, or other"
+                  placeholder="Bacterial, fungal, lid fungus, mites, plant dead, or other"
                   required
                 />
               </label>
