@@ -41,8 +41,10 @@ public class AnalyticsController {
     }
 
     public record TechnicianOption(String username, String name) {}
-    public record Summary(long bottles, long plants, long contaminatedBottles, double contaminationRate) {}
-    public record PeriodRow(String period, String technician, String technicianName, long bottles,
+    public record Summary(long initiationBottles, long initiationPlants, long bottles,
+                          long plants, long contaminatedBottles, double contaminationRate) {}
+    public record PeriodRow(String period, String technician, String technicianName,
+                            long initiationBottles, long initiationPlants, long bottles,
                             long plants, long contaminatedBottles, double contaminationRate) {}
     public record ProductionReport(List<TechnicianOption> technicians, List<PeriodRow> rows, Summary summary) {}
     public record OutputRow(String period, Long plantId, String plantCode, String plantName,
@@ -100,9 +102,16 @@ public class AnalyticsController {
 
     private record GroupKey(String period, String technician) {}
     private static class Totals {
+        long initiationBottles;
+        long initiationPlants;
         long bottles;
         long plants;
         long contaminatedBottles;
+
+        void addInitiation(int plantCount) {
+            initiationBottles++;
+            initiationPlants += plantCount;
+        }
 
         void add(Subculture bottle, boolean contaminated) {
             bottles++;
@@ -111,7 +120,8 @@ public class AnalyticsController {
         }
 
         Summary summary() {
-            return new Summary(bottles, plants, contaminatedBottles, rate(contaminatedBottles, bottles));
+            return new Summary(initiationBottles, initiationPlants, bottles, plants,
+                contaminatedBottles, rate(contaminatedBottles, bottles));
         }
     }
 
@@ -130,7 +140,9 @@ public class AnalyticsController {
         var names = new HashMap<String, String>();
         users.findAll().forEach(user -> names.put(user.getUsername(), user.getFullName()));
         var all = subcultures.findAll();
+        var allInitiations = mothers.findAll();
         all.forEach(bottle -> names.putIfAbsent(bottle.getTechnician(), bottle.getTechnician()));
+        allInitiations.forEach(bottle -> names.putIfAbsent(bottle.getTechnician(), bottle.getTechnician()));
         var options = names.entrySet().stream()
             .map(entry -> new TechnicianOption(entry.getKey(), entry.getValue()))
             .sorted(Comparator.comparing(TechnicianOption::name, String.CASE_INSENSITIVE_ORDER))
@@ -140,6 +152,15 @@ public class AnalyticsController {
         discards.findAll().forEach(record -> discardedByBarcode.put(record.getBarcode(), record));
         var groups = new LinkedHashMap<GroupKey, Totals>();
         var overall = new Totals();
+        for (var bottle : allInitiations) {
+            LocalDate created = bottle.getCreatedDate();
+            if (created == null || (from != null && created.isBefore(from)) ||
+                (to != null && created.isAfter(to)) ||
+                (!technician.isBlank() && !technician.equals(bottle.getTechnician()))) continue;
+            groups.computeIfAbsent(new GroupKey(period(created, interval), bottle.getTechnician()),
+                ignored -> new Totals()).addInitiation(bottle.getPlantCount());
+            overall.addInitiation(bottle.getPlantCount());
+        }
         for (var bottle : all) {
             LocalDate created = bottle.getCreatedDate();
             if (created == null || (from != null && created.isBefore(from)) ||
@@ -152,8 +173,9 @@ public class AnalyticsController {
         }
         var rows = new ArrayList<PeriodRow>();
         groups.forEach((key, total) -> rows.add(new PeriodRow(key.period(), key.technician(),
-            names.getOrDefault(key.technician(), key.technician()), total.bottles, total.plants,
-            total.contaminatedBottles, rate(total.contaminatedBottles, total.bottles))));
+            names.getOrDefault(key.technician(), key.technician()), total.initiationBottles,
+            total.initiationPlants, total.bottles, total.plants, total.contaminatedBottles,
+            rate(total.contaminatedBottles, total.bottles))));
         rows.sort(Comparator.comparing(PeriodRow::period).reversed()
             .thenComparing(PeriodRow::technicianName, String.CASE_INSENSITIVE_ORDER));
         return new ProductionReport(options, rows, overall.summary());

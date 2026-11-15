@@ -134,6 +134,13 @@ class AnalyticsReportTests {
         var first = bottle(technician, LocalDate.parse("2026-10-17"), 4, parent, medium);
         var second = bottle(technician, LocalDate.parse("2026-10-17"), 6, parent, medium);
         var third = bottle(technician, LocalDate.parse("2026-10-18"), 3, parent, medium);
+        var initiated = initiation(parent, medium, LocalDate.parse("2026-10-17"), 7);
+        initiated.setTechnician(technician);
+        mothers.save(initiated);
+        String initiationOnlyTechnician = "initiation-" + UUID.randomUUID();
+        var initiationOnly = initiation(parent, medium, LocalDate.parse("2026-10-17"), 5);
+        initiationOnly.setTechnician(initiationOnlyTechnician);
+        mothers.save(initiationOnly);
         discard(first, "Bacterial contamination", LocalDate.parse("2026-10-19"));
         discard(second, "Plant dead", LocalDate.parse("2026-10-19"));
 
@@ -145,14 +152,26 @@ class AnalyticsReportTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.summary.bottles").value(2))
             .andExpect(jsonPath("$.summary.plants").value(10))
+            .andExpect(jsonPath("$.summary.initiationBottles").value(1))
+            .andExpect(jsonPath("$.summary.initiationPlants").value(7))
             .andExpect(jsonPath("$.summary.contaminatedBottles").value(1))
             .andExpect(jsonPath("$.summary.contaminationRate").value(50.0))
-            .andExpect(jsonPath("$.rows[0].period").value("2026-10-17"));
+            .andExpect(jsonPath("$.rows[0].period").value("2026-10-17"))
+            .andExpect(jsonPath("$.rows[0].initiationPlants").value(7));
+        mvc.perform(get("/api/analytics/production").with(analyst)
+                .param("technician", initiationOnlyTechnician).param("interval", "day")
+                .param("from", "2026-10-17").param("to", "2026-10-17"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.summary.initiationBottles").value(1))
+            .andExpect(jsonPath("$.summary.initiationPlants").value(5))
+            .andExpect(jsonPath("$.summary.bottles").value(0))
+            .andExpect(jsonPath("$.rows[0].technician").value(initiationOnlyTechnician));
         mvc.perform(get("/api/analytics/production").with(analyst)
                 .param("technician", technician).param("interval", "week"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.summary.bottles").value(3))
             .andExpect(jsonPath("$.summary.plants").value(13))
+            .andExpect(jsonPath("$.summary.initiationBottles").value(1))
             .andExpect(jsonPath("$.summary.contaminationRate").value(33.3));
         mvc.perform(get("/api/analytics/production").with(analyst)
                 .param("technician", technician).param("interval", "month"))
