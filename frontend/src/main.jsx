@@ -502,6 +502,7 @@ function AnalyticsPage() {
     [production, setProduction] = useState(null),
     [interval, setInterval] = useState("day"),
     [technician, setTechnician] = useState(""),
+    [reportMetric, setReportMetric] = useState("plants"),
     [fromDate, setFromDate] = useState(""),
     [toDate, setToDate] = useState(""),
     [productionError, setProductionError] = useState(""),
@@ -637,6 +638,37 @@ function AnalyticsPage() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  const reportMetrics = {
+    plants: { label: "Plants subcultured", key: "plants" },
+    bottles: { label: "Bottles produced", key: "bottles" },
+    contaminatedBottles: { label: "Contaminated bottles", key: "contaminatedBottles" },
+    contaminationRate: { label: "Contamination rate", key: "contaminationRate" },
+  };
+  const selectedReportMetric = reportMetrics[reportMetric];
+  const formatReportMetric = (total) => reportMetric === "contaminationRate"
+    ? `${total.bottles ? (100 * total.contaminatedBottles / total.bottles).toFixed(1) : "0.0"}%`
+    : total[selectedReportMetric.key].toLocaleString();
+  const staffTotals = new Map();
+  (production?.rows || []).forEach((row) => {
+    const total = staffTotals.get(row.technician) || {
+      username: row.technician, name: row.technicianName, bottles: 0, plants: 0, contaminatedBottles: 0,
+    };
+    total.bottles += row.bottles;
+    total.plants += row.plants;
+    total.contaminatedBottles += row.contaminatedBottles;
+    staffTotals.set(row.technician, total);
+  });
+  const staffBreakdown = [...staffTotals.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const periodTotals = new Map();
+  (production?.rows || []).forEach((row) => {
+    const total = periodTotals.get(row.period) || { period: row.period, bottles: 0, plants: 0, contaminatedBottles: 0 };
+    total.bottles += row.bottles;
+    total.plants += row.plants;
+    total.contaminatedBottles += row.contaminatedBottles;
+    periodTotals.set(row.period, total);
+  });
+  const recentPeriods = [...periodTotals.values()].sort((a, b) => b.period.localeCompare(a.period)).slice(0, 6);
+
   return (
     <>
       <header>
@@ -646,9 +678,10 @@ function AnalyticsPage() {
       </header>
       <ProductionOverview />
       <section className="panel production-report">
-        <div className="chart-title"><div><h2>Subculture & contamination report</h2><span>Filter by staff member and day, ISO week, or month.</span></div><button type="button" className="secondary compact" onClick={downloadProductionCsv} disabled={!production?.rows.length}>Download report (CSV)</button></div>
+        <div className="chart-title"><div><h2>Subculture & contamination report</h2><span>Choose a staff member, a metric, and a day, ISO week, or month.</span></div><button type="button" className="secondary compact" onClick={downloadProductionCsv} disabled={!production?.rows.length}>Download full report (CSV)</button></div>
         <div className="report-controls">
           <label>Technician<select value={technician} onChange={(event) => setTechnician(event.target.value)}><option value="">All staff</option>{(production?.technicians || []).map((person) => <option key={person.username} value={person.username}>{person.name} ({person.username})</option>)}</select></label>
+          <label>Show metric<select value={reportMetric} onChange={(event) => setReportMetric(event.target.value)}>{Object.entries(reportMetrics).map(([key, metric]) => <option key={key} value={key}>{metric.label}</option>)}</select></label>
           <label>Group by<select value={interval} onChange={(event) => setInterval(event.target.value)}><option value="day">Daily</option><option value="week">Weekly</option><option value="month">Monthly</option></select></label>
           <label>From<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
           <label>To<input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} /></label>
@@ -656,14 +689,23 @@ function AnalyticsPage() {
         {productionError && <div className="error">{productionError}</div>}
         {!production && !productionError && <p className="muted">Loading report…</p>}
         {production && <>
-          <div className="report-summary">
-            <div><span>Plants subcultured</span><strong>{production.summary.plants.toLocaleString()}</strong></div>
-            <div><span>Bottles produced</span><strong>{production.summary.bottles.toLocaleString()}</strong></div>
-            <div><span>Contaminated bottles</span><strong>{production.summary.contaminatedBottles.toLocaleString()}</strong></div>
-            <div><span>Contamination rate</span><strong>{production.summary.contaminationRate.toFixed(1)}%</strong></div>
+          <div className="report-focus"><span>{selectedReportMetric.label} · {technician ? production.technicians.find((person) => person.username === technician)?.name || technician : "All staff"}</span><strong>{formatReportMetric(production.summary)}</strong><small>{reportMetric === "contaminationRate" ? `${production.summary.contaminatedBottles.toLocaleString()} contaminated of ${production.summary.bottles.toLocaleString()} bottles produced` : `${production.summary.bottles.toLocaleString()} bottles produced in the selected dates`}</small></div>
+          <div className="staff-breakdown">
+            <div className="staff-breakdown-heading"><h3>By staff member</h3>{technician && <button type="button" className="secondary compact" onClick={() => setTechnician("")}>Show all staff</button>}</div>
+            {staffBreakdown.map((person) => <button type="button" className="staff-metric-row" key={person.username} onClick={() => setTechnician(person.username)} aria-label={`View ${person.name} report`}>
+              <span><b>{person.name}</b><small>{person.username}</small></span><strong>{formatReportMetric(person)}</strong>
+            </button>)}
+            {!staffBreakdown.length && <p className="muted">No subculture work matches these filters.</p>}
           </div>
-          <p className="report-definition">Contamination rate = bottles made in the period that were later discarded for bacterial, fungal, mite, or other recorded contamination ÷ all subculture bottles made in that period. Plant-death and other non-contamination discards are excluded.</p>
-          <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Technician</th><th>Bottles</th><th>Plants subcultured</th><th>Contaminated bottles</th><th>Rate</th></tr></thead><tbody>{production.rows.map((row) => <tr key={`${row.period}-${row.technician}`}><td>{row.period}</td><td>{row.technicianName}</td><td>{row.bottles}</td><td><b>{row.plants}</b></td><td>{row.contaminatedBottles}</td><td><b>{row.contaminationRate.toFixed(1)}%</b></td></tr>)}{!production.rows.length && <tr><td colSpan="6" className="empty">No subculture bottles match these filters.</td></tr>}</tbody></table></div>
+          <div className="staff-breakdown">
+            <div className="staff-breakdown-heading"><h3>Recent {interval === "day" ? "days" : interval === "week" ? "weeks" : "months"}</h3><small>{selectedReportMetric.label}</small></div>
+            {recentPeriods.map((period) => <div className="staff-metric-row report-period-row" key={period.period}><span><b>{period.period}</b></span><strong>{formatReportMetric(period)}</strong></div>)}
+            {!recentPeriods.length && <p className="muted">No periods match these filters.</p>}
+          </div>
+          {reportMetric === "contaminationRate" && <p className="report-definition">Contamination rate = bottles made in the selected period that were later discarded for contamination ÷ all subculture bottles made in that period. Plant-death and other non-contamination discards are excluded.</p>}
+          <details className="report-details"><summary>View detailed period table <span>{production.rows.length} rows</span></summary>
+            <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Technician</th><th>Bottles</th><th>Plants subcultured</th><th>Contaminated bottles</th><th>Rate</th></tr></thead><tbody>{production.rows.map((row) => <tr key={`${row.period}-${row.technician}`}><td>{row.period}</td><td>{row.technicianName}</td><td>{row.bottles}</td><td><b>{row.plants}</b></td><td>{row.contaminatedBottles}</td><td><b>{row.contaminationRate.toFixed(1)}%</b></td></tr>)}{!production.rows.length && <tr><td colSpan="6" className="empty">No subculture bottles match these filters.</td></tr>}</tbody></table></div>
+          </details>
         </>}
       </section>
       {error && <div className="error">{error}</div>}
