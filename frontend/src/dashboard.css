@@ -37,6 +37,7 @@
 .analytics-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 240px)); gap: 18px; margin: 28px 0 0; }
 .analytics-panel { display: grid; gap: 26px; }
 .production-report { display: grid; gap: 22px; margin-top: 28px; }
+.hardening-recent { max-height: 480px; align-self: start; }
 .output-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .output-totals > div { display: grid; gap: 5px; padding: 18px; border: 1px solid #e5ede9; border-radius: 12px; background: #f8fbf9; }
 .output-totals span { color: #60766b; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
@@ -84,6 +85,7 @@
 .report-table { overflow-x: auto; }
 .report-table table { min-width: 700px; }
 .production-report:not(.output-report) .report-table table { min-width: 1040px; }
+.hardening-report .report-table table { min-width: 560px; }
 .output-report .report-table table { min-width: 880px; }
 .output-variety-name { display: block; margin-top: 3px; color: #60766b; font-size: 11px; }
 .chart-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 16px; padding-bottom: 22px; border-bottom: 1px solid #e5ede9; }
