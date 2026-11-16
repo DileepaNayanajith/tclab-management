@@ -626,9 +626,9 @@ function AnalyticsPage() {
   function downloadProductionCsv() {
     if (!production) return;
     const escape = (value) => `"${String(value).replaceAll('"', '""')}"`;
-    const rows = [["Period", "Technician", "Initiation bottles", "Plants initiated", "Subculture bottles", "Plants subcultured", "Contaminated bottles", "Contamination rate (%)"],
+    const rows = [["Period", "Technician", "Initiation bottles", "Plants initiated", "Subculture bottles", "Plants subcultured", "Rooting bottles", "Plants placed in rooting", "Contaminated bottles", "Contamination rate (%)"],
       ...production.rows.map((row) => [row.period, row.technicianName, row.initiationBottles, row.initiationPlants, row.bottles, row.plants,
-        row.contaminatedBottles, row.contaminationRate])];
+        row.rootedBottles, row.rootedPlants, row.contaminatedBottles, row.contaminationRate])];
     const url = URL.createObjectURL(new Blob([rows.map((row) => row.map(escape).join(",")).join("\n")],
       { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
@@ -645,12 +645,16 @@ function AnalyticsPage() {
     initiationBottles: { label: "Initiation bottles", key: "initiationBottles" },
     plants: { label: "Plants subcultured", key: "plants" },
     bottles: { label: "Subculture bottles", key: "bottles" },
+    rootedPlants: { label: "Plants placed in rooting", key: "rootedPlants" },
+    rootedBottles: { label: "Rooting bottles produced", key: "rootedBottles" },
     contaminatedBottles: { label: "Contaminated bottles", key: "contaminatedBottles" },
     contaminationRate: { label: "Contamination rate", key: "contaminationRate" },
   };
   const selectedReportMetric = reportMetrics[reportMetric];
   const reportContext = (total) => reportMetric === "contaminationRate"
     ? `${total.contaminatedBottles.toLocaleString()} contaminated of ${total.bottles.toLocaleString()} subculture bottles`
+    : reportMetric.startsWith("rooted")
+      ? `${total.rootedBottles.toLocaleString()} rooting bottles made in the selected dates`
     : reportMetric.startsWith("initiation")
       ? `${total.initiationBottles.toLocaleString()} initiation bottles in the selected dates`
       : `${total.bottles.toLocaleString()} subculture bottles in the selected dates`;
@@ -661,12 +665,15 @@ function AnalyticsPage() {
   (production?.rows || []).forEach((row) => {
     const total = staffTotals.get(row.technician) || {
       username: row.technician, name: row.technicianName, initiationBottles: 0,
-      initiationPlants: 0, bottles: 0, plants: 0, contaminatedBottles: 0,
+      initiationPlants: 0, bottles: 0, plants: 0, rootedBottles: 0,
+      rootedPlants: 0, contaminatedBottles: 0,
     };
     total.initiationBottles += row.initiationBottles;
     total.initiationPlants += row.initiationPlants;
     total.bottles += row.bottles;
     total.plants += row.plants;
+    total.rootedBottles += row.rootedBottles;
+    total.rootedPlants += row.rootedPlants;
     total.contaminatedBottles += row.contaminatedBottles;
     staffTotals.set(row.technician, total);
   });
@@ -674,11 +681,14 @@ function AnalyticsPage() {
   const periodTotals = new Map();
   (production?.rows || []).forEach((row) => {
     const total = periodTotals.get(row.period) || { period: row.period, initiationBottles: 0,
-      initiationPlants: 0, bottles: 0, plants: 0, contaminatedBottles: 0 };
+      initiationPlants: 0, bottles: 0, plants: 0, rootedBottles: 0,
+      rootedPlants: 0, contaminatedBottles: 0 };
     total.initiationBottles += row.initiationBottles;
     total.initiationPlants += row.initiationPlants;
     total.bottles += row.bottles;
     total.plants += row.plants;
+    total.rootedBottles += row.rootedBottles;
+    total.rootedPlants += row.rootedPlants;
     total.contaminatedBottles += row.contaminatedBottles;
     periodTotals.set(row.period, total);
   });
@@ -693,7 +703,7 @@ function AnalyticsPage() {
       </header>
       <ProductionOverview />
       <section className="panel production-report">
-        <div className="chart-title"><div><h2>Initiation, subculture & contamination report</h2><span>Choose a staff member, a metric, and a day, ISO week, or month.</span></div><button type="button" className="secondary compact" onClick={downloadProductionCsv} disabled={!production?.rows.length}>Download full report (CSV)</button></div>
+        <div className="chart-title"><div><h2>Initiation, subculture, rooting & contamination report</h2><span>Choose a staff member, a metric, and a day, ISO week, or month.</span></div><button type="button" className="secondary compact" onClick={downloadProductionCsv} disabled={!production?.rows.length}>Download full report (CSV)</button></div>
         <div className="report-controls">
           <label>Technician<select value={technician} onChange={(event) => setTechnician(event.target.value)}><option value="">All staff</option>{(production?.technicians || []).map((person) => <option key={person.username} value={person.username}>{person.name} ({person.username})</option>)}</select></label>
           <label>Show metric<select value={reportMetric} onChange={(event) => setReportMetric(event.target.value)}>{Object.entries(reportMetrics).map(([key, metric]) => <option key={key} value={key}>{metric.label}</option>)}</select></label>
@@ -718,8 +728,9 @@ function AnalyticsPage() {
             {!recentPeriods.length && <p className="muted">No periods match these filters.</p>}
           </div>
           {reportMetric === "contaminationRate" && <p className="report-definition">Contamination rate = bottles made in the selected period that were later discarded for contamination ÷ all subculture bottles made in that period. Plant-death and other non-contamination discards are excluded.</p>}
+          {(reportMetric === "rootedPlants" || reportMetric === "rootedBottles") && <p className="report-definition">Rooting production is counted when a staff member registers a subculture bottle as Rooting. It is historical output, including bottles later used, discarded, or sold.</p>}
           <details className="report-details"><summary>View detailed period table <span>{production.rows.length} rows</span></summary>
-            <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Technician</th><th>Initiation bottles</th><th>Plants initiated</th><th>Subculture bottles</th><th>Plants subcultured</th><th>Contaminated bottles</th><th>Rate</th></tr></thead><tbody>{production.rows.map((row) => <tr key={`${row.period}-${row.technician}`}><td>{row.period}</td><td>{row.technicianName}</td><td>{row.initiationBottles}</td><td><b>{row.initiationPlants}</b></td><td>{row.bottles}</td><td><b>{row.plants}</b></td><td>{row.contaminatedBottles}</td><td><b>{row.contaminationRate.toFixed(1)}%</b></td></tr>)}{!production.rows.length && <tr><td colSpan="8" className="empty">No initiation or subculture bottles match these filters.</td></tr>}</tbody></table></div>
+            <div className="table-wrap report-table"><table><thead><tr><th>Period</th><th>Technician</th><th>Initiation bottles</th><th>Plants initiated</th><th>Subculture bottles</th><th>Plants subcultured</th><th>Rooting bottles</th><th>Plants placed in rooting</th><th>Contaminated bottles</th><th>Rate</th></tr></thead><tbody>{production.rows.map((row) => <tr key={`${row.period}-${row.technician}`}><td>{row.period}</td><td>{row.technicianName}</td><td>{row.initiationBottles}</td><td><b>{row.initiationPlants}</b></td><td>{row.bottles}</td><td><b>{row.plants}</b></td><td>{row.rootedBottles}</td><td><b>{row.rootedPlants}</b></td><td>{row.contaminatedBottles}</td><td><b>{row.contaminationRate.toFixed(1)}%</b></td></tr>)}{!production.rows.length && <tr><td colSpan="10" className="empty">No initiation or subculture bottles match these filters.</td></tr>}</tbody></table></div>
           </details>
         </>}
       </section>
