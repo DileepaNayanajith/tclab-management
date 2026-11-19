@@ -161,10 +161,12 @@ class AnalyticsReportTests {
             .andExpect(jsonPath("$.summary.initiationBottles").value(1))
             .andExpect(jsonPath("$.summary.initiationPlants").value(7))
             .andExpect(jsonPath("$.summary.contaminatedBottles").value(1))
+            .andExpect(jsonPath("$.summary.contaminatedPlants").value(4))
             .andExpect(jsonPath("$.summary.contaminationRate").value(50.0))
             .andExpect(jsonPath("$.rows[0].period").value("2026-10-17"))
             .andExpect(jsonPath("$.rows[0].initiationPlants").value(7))
-            .andExpect(jsonPath("$.rows[0].rootedPlants").value(4));
+            .andExpect(jsonPath("$.rows[0].rootedPlants").value(4))
+            .andExpect(jsonPath("$.rows[0].contaminatedPlants").value(4));
         mvc.perform(get("/api/analytics/production").with(analyst)
                 .param("technician", initiationOnlyTechnician).param("interval", "day")
                 .param("from", "2026-10-17").param("to", "2026-10-17"))
@@ -173,6 +175,7 @@ class AnalyticsReportTests {
             .andExpect(jsonPath("$.summary.initiationPlants").value(5))
             .andExpect(jsonPath("$.summary.bottles").value(0))
             .andExpect(jsonPath("$.summary.rootedPlants").value(0))
+            .andExpect(jsonPath("$.summary.contaminatedPlants").value(0))
             .andExpect(jsonPath("$.rows[0].technician").value(initiationOnlyTechnician));
         mvc.perform(get("/api/analytics/production").with(analyst)
                 .param("technician", technician).param("interval", "week"))
@@ -182,6 +185,7 @@ class AnalyticsReportTests {
             .andExpect(jsonPath("$.summary.rootedBottles").value(2))
             .andExpect(jsonPath("$.summary.rootedPlants").value(7))
             .andExpect(jsonPath("$.summary.initiationBottles").value(1))
+            .andExpect(jsonPath("$.summary.contaminatedPlants").value(4))
             .andExpect(jsonPath("$.summary.contaminationRate").value(33.3));
         mvc.perform(get("/api/analytics/production").with(analyst)
                 .param("technician", technician).param("interval", "month"))
@@ -206,6 +210,7 @@ class AnalyticsReportTests {
         var record = new DiscardRecord();
         record.setBarcode(bottle.getBarcode());
         record.setReason(reason);
+        record.setPlantCount(bottle.getPlantCount());
         record.setDiscardedDate(date);
         discards.save(record);
     }
