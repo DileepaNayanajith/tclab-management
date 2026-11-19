@@ -43,11 +43,11 @@ public class AnalyticsController {
     public record TechnicianOption(String username, String name) {}
     public record Summary(long initiationBottles, long initiationPlants, long bottles,
                           long plants, long rootedBottles, long rootedPlants,
-                          long contaminatedBottles, double contaminationRate) {}
+                          long contaminatedBottles, long contaminatedPlants, double contaminationRate) {}
     public record PeriodRow(String period, String technician, String technicianName,
                             long initiationBottles, long initiationPlants, long bottles,
                             long plants, long rootedBottles, long rootedPlants,
-                            long contaminatedBottles, double contaminationRate) {}
+                            long contaminatedBottles, long contaminatedPlants, double contaminationRate) {}
     public record ProductionReport(List<TechnicianOption> technicians, List<PeriodRow> rows, Summary summary) {}
     public record OutputRow(String period, Long plantId, String plantCode, String plantName,
                             String plantVariety, long initiationBottles, long initiationPlants,
@@ -111,26 +111,30 @@ public class AnalyticsController {
         long rootedBottles;
         long rootedPlants;
         long contaminatedBottles;
+        long contaminatedPlants;
 
         void addInitiation(int plantCount) {
             initiationBottles++;
             initiationPlants += plantCount;
         }
 
-        void add(Subculture bottle, boolean contaminated) {
+        void add(Subculture bottle, DiscardRecord discard) {
             bottles++;
             plants += bottle.getPlantCount();
             if (bottle.isRooting()) {
                 rootedBottles++;
                 rootedPlants += bottle.getPlantCount();
             }
-            if (contaminated) contaminatedBottles++;
+            if (isContamination(discard)) {
+                contaminatedBottles++;
+                contaminatedPlants += discard.getPlantCount();
+            }
         }
 
         Summary summary() {
             return new Summary(initiationBottles, initiationPlants, bottles, plants,
                 rootedBottles, rootedPlants,
-                contaminatedBottles, rate(contaminatedBottles, bottles));
+                contaminatedBottles, contaminatedPlants, rate(contaminatedBottles, bottles));
         }
     }
 
@@ -175,16 +179,16 @@ public class AnalyticsController {
             if (created == null || (from != null && created.isBefore(from)) ||
                 (to != null && created.isAfter(to)) ||
                 (!technician.isBlank() && !technician.equals(bottle.getTechnician()))) continue;
-            boolean contaminated = isContamination(discardedByBarcode.get(bottle.getBarcode()));
+            var discard = discardedByBarcode.get(bottle.getBarcode());
             groups.computeIfAbsent(new GroupKey(period(created, interval), bottle.getTechnician()),
-                ignored -> new Totals()).add(bottle, contaminated);
-            overall.add(bottle, contaminated);
+                ignored -> new Totals()).add(bottle, discard);
+            overall.add(bottle, discard);
         }
         var rows = new ArrayList<PeriodRow>();
         groups.forEach((key, total) -> rows.add(new PeriodRow(key.period(), key.technician(),
             names.getOrDefault(key.technician(), key.technician()), total.initiationBottles,
             total.initiationPlants, total.bottles, total.plants, total.rootedBottles,
-            total.rootedPlants, total.contaminatedBottles,
+            total.rootedPlants, total.contaminatedBottles, total.contaminatedPlants,
             rate(total.contaminatedBottles, total.bottles))));
         rows.sort(Comparator.comparing(PeriodRow::period).reversed()
             .thenComparing(PeriodRow::technicianName, String.CASE_INSENSITIVE_ORDER));
